@@ -52,6 +52,7 @@ Skip any question the request or footage already answers.
 | Funny moments | `/talk` (hears laughs, shouting, cheering, "clip that") or `/highlights --mode reactions` → `/montage` or `/describe-clip` |
 | They talk in the footage, gave instructions out loud, or sent a voice note | `/talk` first, then whatever it calls for |
 | "Find me examples / references", "how do people make X" | `/reference` → the matching command |
+| Long stream, podcast or talking video → several Shorts/TikToks | `/shorts` (finds, ranks, reframes and captions the best moments) |
 | A character / avatar / hologram / mascot in the video | `/avatar` |
 | Long YouTube video | `/highlights` per recording → `/long-video` → `/thumbnail` |
 | "What's trending?" | `/trends` (or `/reference` for a specific idea) |

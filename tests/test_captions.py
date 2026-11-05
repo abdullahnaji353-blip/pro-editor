@@ -46,3 +46,13 @@ def test_build_marks_emphasis_and_none_turns_it_off():
     ass0, _, _, n0 = build(ws, 1080, 1920, emphasis="none")
     assert n0 == 0
     assert srt.startswith("1\n00:00:00,000 --> ")
+
+
+def test_emphasis_with_few_candidate_words():
+    # many caption groups, only one with a word worth colouring: used to crash (IndexError)
+    from captions import pick_emphasis
+
+    words = [{"w": w, "start": i * 0.3, "end": i * 0.3 + 0.25} for i, w in enumerate("so the and it was a 1v4".split())]
+    chunks = [[w] for w in words]
+    out = pick_emphasis(words, chunks, "auto")
+    assert out == {6}

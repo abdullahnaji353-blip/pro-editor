@@ -128,7 +128,7 @@ def pick_emphasis(words, chunks, mode, loud=None):
         picks.append((best_sc, best))
     # keep the strongest, about a third of the groups, and anything the user asked for
     scores = sorted((sc for sc, w in picks if w is not None), reverse=True)
-    cut = scores[max(0, len(picks) // 3 - 1)] if scores and len(picks) >= 3 else 0
+    cut = scores[min(len(scores) - 1, max(0, len(picks) // 3 - 1))] if scores and len(picks) >= 3 else 0
     out = set()
     for sc, w in picks:
         if w is not None and sc >= max(3.0, cut):

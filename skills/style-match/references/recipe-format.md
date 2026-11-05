@@ -29,6 +29,7 @@
     "slowmo_on_drops": true,       // the 2 cuts starting at each drop play slowed down
     "slowmo_speed": 0.5,           // 0.5 = half speed
     "letterbox": false,            // cinematic black bars top and bottom
+    "transitions": "off",          // off | whip | spin | mix: camera-move transitions on strong beats (never two cuts in a row)
     "text_overlays": [             // seconds on the montage timeline
       {"text": "NAJI", "start": 0.0, "end": 1.5, "position": "center", "size": null}
     ],

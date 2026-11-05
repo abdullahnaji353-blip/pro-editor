@@ -11,7 +11,7 @@ Usage:
 --preview    renders at half resolution, 30fps, fast settings: seconds instead of minutes.
              Same cuts and effects as the full render, so approve the preview then re-run without it.
 
-Effects (recipe["effects"]): zoom punch, flash, shake, RGB split, velocity speed ramps with
+Effects (recipe["effects"]): zoom punch, flash, shake, RGB split, whip/spin transitions, velocity speed ramps with
 motion blur, smooth slow-mo on drops, letterbox, text overlays, plus a color grade toward the
 recipe's brightness/saturation/contrast. recipe["audio"]["game_audio_volume"] mixes the clips'
 own sound (kills, goal explosions) under the song.
@@ -57,6 +57,7 @@ DEFAULT_RECIPE = {
         "slowmo_on_drops": True,
         "slowmo_speed": 0.5,
         "letterbox": False,
+        "transitions": "off",
         "text_overlays": [],
         "velocity": "off",
         "velocity_fast": 2.0,
@@ -222,6 +223,7 @@ def make_plan(args, recipe, beats, pool, length):
     if args.shuffle:
         random.Random(args.seed).shuffle(order)
     rot, hero_i, segs = 0, 0, []
+    last_tr, n_tr = -9, 0  # transitions: never two cuts in a row
     slowmo_left = 0
     hook_first = getattr(args, "hook_first", False)
     cold = getattr(args, "cold_open", False) and len(bounds) >= 5 and pool
@@ -300,6 +302,11 @@ def make_plan(args, recipe, beats, pool, length):
             effects.append("flash")
         if fx.get("rgb_split_on_beats") and (on_drop or on_strong):
             effects.append("rgb")
+        tr = fx.get("transitions", "off")
+        if tr in ("whip", "spin", "mix") and on_strong and not on_drop and i > 0 and i - last_tr >= 2:
+            kind = tr if tr != "mix" else ("whip", "spin")[n_tr % 2]
+            effects.append("spin" if kind == "spin" else ("whip-right", "whip-left")[n_tr % 2])
+            last_tr, n_tr = i, n_tr + 1
         segs.append(
             {
                 "index": len(segs),
@@ -433,6 +440,23 @@ def segment_filter(seg, plan, grade):
             f"scale={pw}:{ph},crop={W}:{H}:"
             f"x='(iw-{W})/2+(iw-{W})/2*sin(t*47)*exp(-t*2.5)':"
             f"y='(ih-{H})/2+(ih-{H})/2*cos(t*39)*exp(-t*2.5)'"
+        )
+    whip = next((e for e in seg["effects"] if e.startswith("whip")), None)
+    if whip:  # the shot slams in sideways, motion-blurred, settling in ~0.18 s
+        sign = "-" if whip == "whip-left" else ""
+        pw, ph = int(W * 1.25) // 2 * 2, int(H * 1.25) // 2 * 2
+        blur = max(4, int(36 * W / 1080))
+        parts.append(
+            f"scale={pw}:{ph},crop={W}:{H}:"
+            f"x='(iw-{W})/2+{sign}(iw-{W})/2*pow(max(0\\,1-t/0.18)\\,2)':y='(ih-{H})/2',"
+            f"avgblur=sizeX={blur}:sizeY=1:enable='lt(t,0.12)'"
+        )
+    if "spin" in seg["effects"]:  # the shot twists in from 17 degrees; 1.5x covers the corners at 16:9 and 9:16
+        pw, ph = int(W * 1.5) // 2 * 2, int(H * 1.5) // 2 * 2
+        blur = max(3, int(14 * W / 1080))
+        parts.append(
+            f"scale={pw}:{ph},rotate=a='0.3*pow(max(0\\,1-t/0.2)\\,2)':c=black,crop={W}:{H},"
+            f"avgblur=sizeX={blur}:sizeY={blur}:enable='lt(t,0.1)'"
         )
     if "rgb" in seg["effects"]:
         px = max(2, int(fx.get("rgb_split_px", 14) * W / 1080))

@@ -10,8 +10,9 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 
 ## What it does
 
-- Gaming: finds your best moments and cuts them to the beat, with speed ramps, zoom punches,
-  shake, flashes, glitch and slow-mo. Cold opens, loop endings, HUD insets for vertical video.
+- Gaming: finds your best moments and cuts them to the beat, landing the action on the hit, with
+  speed ramps, zoom punches, whip and spin transitions, shake, flashes, glitch and slow-mo. Cold
+  opens, loop endings, HUD insets for vertical video.
 - Talking videos: cleans up your voice, removes silences and "um"s, lets you edit by deleting lines
   of the transcript, adds word-by-word captions and YouTube chapters.
 - Travel and events: picks the best-looking shots, grades them, cuts a recap to your song.
@@ -21,12 +22,14 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 - `/avatar`: an animated character that stands in your palm and follows your hand, reacts when
   you poke it, and can appear from a closed fist. Solid or hologram style, or your own character.
 - `/reference`: finds real examples of the edit you have in mind and works out how they're made.
+- `/shorts`: turns a long stream, podcast or talking video into ranked vertical clips with captions,
+  cut on whole sentences and framed on your face.
 - Exports for TikTok, Reels, Shorts and YouTube up to 4K, plus timelines for Premiere Pro and
   DaVinci Resolve and colour grades as `.cube` LUTs.
 
 ![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
-> Early version (0.8). Every tool is tested on generated test videos, but not much on real
+> Early version (0.9). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
 > Bug reports are very welcome.
 
@@ -99,6 +102,7 @@ up as `/pro-editor:start`, `/pro-editor:montage` and so on.
 | `/talk` | "do what I said in the video" | Hears words and sounds, follows spoken instructions, turns "clip that" into highlights, takes voice notes as instructions |
 | `/avatar` | "put a robot in my hand" | Hand-tracked animated character: waves, blinks, reacts to pokes, speech bubbles, talks with a voice line |
 | `/reference` | "find examples of this edit" | Web research for references, how each is made, what they share, then a plan |
+| `/shorts` | "make shorts from my stream" | Finds and ranks self-contained moments, then reframes and captions the ones you pick |
 | `/trends` | "what edit style is trending?" | Current edit styles and sounds, turned into a style recipe |
 | `/style-match` | "edit it like these 3 videos" | Measures pace, beat sync, colour and effects in reference edits |
 | `/highlights` | "find the best moments" | Action, reactions or scenic shots |

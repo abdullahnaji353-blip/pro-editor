@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.0
+
+**New**
+- `/shorts`: one long video (stream, podcast, commentary) into ranked vertical clips. Finds
+  stretches of whole sentences, scores hook, energy, ending and pace with the reasons written out,
+  has Claude read and re-rank them, then renders the picks reframed to 9:16 on the speaker's face
+  with word-by-word captions.
+- Montage transitions: whip (the shot slams in sideways with motion blur) and spin, on strong beats,
+  never two cuts in a row. Recipe `effects.transitions`: off, whip, spin or mix.
+
+**Fixed**
+- Captions crashed on short clips where only a few caption groups had a word worth colouring.
+
 ## 0.8.2
 
 - Montages land the action on the beat: drop shots and strong-beat shots now start just before each

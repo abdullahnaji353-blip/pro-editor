@@ -327,6 +327,25 @@ Want the photoreal "tiny me in my hand" look? That's made with AI video tools (S
 Runway). Claude can write the prompt for those, or you can bring an AI-made green-screen character
 back into your own footage with `/avatar`.
 
+### /shorts: one long video, several clips
+
+Give it a stream, podcast, commentary or interview. It finds stretches of whole sentences (20-60 s by
+default), scores each one on four things and explains the score:
+
+| Signal | What it looks for |
+|---|---|
+| Hook | The first sentence: a question, talking to "you", a number, a strong word. "So", "um" and "and" openers lose points |
+| Energy | How loud and lively it is compared with the rest of the video |
+| Ending | Finishes on a full stop, question or exclamation, not mid-thought |
+| Pace | Words per second in the range that holds attention on Shorts |
+
+Claude then reads every candidate's words and re-ranks them like an editor (does the first line stop
+the scroll, does it make sense without context, is there a payoff), and suggests titles. You pick;
+it renders each one cut on sentence boundaries, reframed to 9:16 on your face, with word-by-word
+captions.
+
+> "/shorts" + your stream recording: "give me 5 TikToks, 30-45 seconds each"
+
 ### /reference: find examples first
 
 Searches TikTok, Instagram, YouTube, Reddit, tutorials (and GitHub for technical effects) for your
