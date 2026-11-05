@@ -92,13 +92,43 @@ def merged_recipe(path):
 
 
 # ---------------------------------------------------------------- planning
-def cut_points(beats, length, every, snap, shot_sec, drops):
+def energy_steps(beats, step, drops):
+    """Cut spacing (in beats) for each beat, following the song: twice as slow where the song is
+    quiet, twice as fast for the 8 beats after a drop, the recipe's spacing everywhere else."""
+    bs = beats["beats"]
+    strength = beats.get("beat_strength") or [1.0] * len(bs)
+    if len(strength) != len(bs) or len(bs) < 16:
+        return [step] * len(bs)
+    win = [strength[max(0, i - 4) : i + 4] for i in range(len(bs))]
+    smooth = [sum(w) / len(w) for w in win]
+    quiet = sorted(smooth)[int(len(smooth) * 0.3)]
+    drop_idx = [j for j, b in enumerate(bs) if any(abs(b - d) < 0.05 for d in drops)]
+    out = []
+    for i in range(len(bs)):
+        if any(0 <= i - j < 8 for j in drop_idx):
+            out.append(max(1, step // 2))
+        elif smooth[i] < quiet:
+            out.append(step * 2)
+        else:
+            out.append(step)
+    return out
+
+
+def cut_points(beats, length, every, snap, shot_sec, drops, adaptive=True):
     if snap and beats:
         bs = [b for b in beats["beats"] if 0 < b < length]
         if every == 0.5:
             pts = []
             for a, b in zip([0.0] + bs, bs):
                 pts += [round(a + (b - a) / 2, 3), b]
+        elif adaptive:
+            step = max(1, int(every))
+            steps = energy_steps(beats, step, drops)
+            idx = {round(b, 3): i for i, b in enumerate(beats["beats"])}
+            pts, i = [], 0
+            while i < len(bs):
+                pts.append(bs[i])
+                i += steps[idx.get(round(bs[i], 3), 0)]
         else:
             step = max(1, int(every))
             pts = bs[::step]
@@ -151,6 +181,18 @@ def take(pool_item, need_sec):
     return start, length
 
 
+def take_at_peak(pool_item, need_sec, lead=0.12):
+    """Take need_sec of source so the clip's best moment (its peak) lands just after the cut,
+    i.e. on the beat. Each peak is used once; after that the clip plays on from there."""
+    p = pool_item
+    lead = min(lead, 0.25 * need_sec)
+    start = max(p["start"], min(p["peak"] - lead, p["end"] - need_sec))
+    length = min(need_sec, p["end"] - start)
+    p["cursor"] = start + length
+    p["peak_used"] = True
+    return start, length
+
+
 def make_plan(args, recipe, beats, pool, length):
     fx = recipe["effects"]
     fps = int(recipe["format"]["fps"])
@@ -163,6 +205,7 @@ def make_plan(args, recipe, beats, pool, length):
         recipe["pacing"].get("snap_cuts_to_beats", True),
         recipe["pacing"].get("median_shot_sec") or 1.0,
         drops,
+        adaptive=recipe["pacing"].get("follow_energy", True),
     )
     strong = set()
     if beats:
@@ -243,7 +286,11 @@ def make_plan(args, recipe, beats, pool, length):
             need_sec = D * (0.4 * vf + 0.6 * vs) + 0.05
         else:
             need_sec = D * speed + 0.05
-        src_in, got = take(pool[idx], need_sec)
+        is_hero = on_drop or (hook_first and i == 0)
+        if not pool[idx].get("peak_used") and (is_hero or on_strong):
+            src_in, got = take_at_peak(pool[idx], need_sec)  # the action hits on the beat
+        else:
+            src_in, got = take(pool[idx], need_sec)
         effects = ["velocity"] if velocity else []
         if fx.get("zoom_punch_on_beats") and (on_strong or on_drop):
             effects.append("zoom")

@@ -34,3 +34,27 @@ def test_chapter_times_follow_the_cut():
     assert out_time(6.0, mapping) == 5.0  # cut out: jumps to the next kept part
     assert out_time(20.0, mapping) is None
     assert ts(75) == "1:15" and ts(3725) == "1:02:05"
+
+
+def test_montage_lands_the_action_on_the_cut():
+    from build_montage import take_at_peak
+
+    clip = {"start": 0.0, "end": 10.0, "cursor": 0.0, "peak": 6.0}
+    start, length = take_at_peak(clip, 1.0)
+    assert start < 6.0 < start + 0.2 and length == 1.0  # the peak shows right after the cut
+    assert clip["peak_used"] and clip["cursor"] == start + length
+
+
+def test_montage_cuts_follow_the_song():
+    from build_montage import cut_points
+
+    beats = [round(0.5 * i, 3) for i in range(1, 97)]  # 48 s at 120 bpm
+    strength = [0.2] * 32 + [0.9] * 64  # quiet intro, then loud
+    data = {"beats": beats, "beat_strength": strength, "downbeats": []}
+    pts = cut_points(data, 48.0, 2, True, 1.0, drops=[16.0])
+    gaps = lambda a, b: [y - x for x, y in zip(pts, pts[1:]) if a <= x < b]  # noqa: E731
+    assert min(gaps(1, 14)) >= 2.0  # quiet: every 4 beats
+    assert max(gaps(16, 19.5)) <= 0.5  # just after the drop: every beat
+    assert set(gaps(24, 46)) == {1.0}  # loud: the recipe's every 2 beats
+    flat = cut_points(data, 48.0, 2, True, 1.0, drops=[16.0], adaptive=False)
+    assert max(y - x for x, y in zip(flat[1:], flat[2:-1])) <= 1.0  # old behaviour: same spacing throughout

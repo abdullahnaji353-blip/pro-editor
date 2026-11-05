@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.2
+
+- Montages land the action on the beat: drop shots and strong-beat shots now start just before each
+  clip's best moment, instead of wherever that clip left off.
+- Montage pacing follows the song: cuts slow down where it's quiet and hit every beat for two bars
+  after a drop (recipe `pacing.follow_energy`, on by default).
+
 ## 0.8.1
 
 - New icon and a redesigned README: a banner, a "how it works" diagram, and images for `/talk` and

@@ -12,6 +12,7 @@
   "pacing": {
     "cut_every_beats": 2,      // 0.5 | 1 | 2 | 4 | 8  (0.5 = cut on every half beat)
     "snap_cuts_to_beats": true,// false = cut every median_shot_sec instead of on beats
+    "follow_energy": true,     // slower cuts where the song is quiet, every beat right after a drop
     "median_shot_sec": 0.9     // used when not snapping
   },
   "color": {                   // targets on a 0-1 scale; null = leave the footage alone
