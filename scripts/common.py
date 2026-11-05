@@ -478,12 +478,16 @@ def safe_copy(p, folder, name=None):
 
 
 def smooth(x, k):
-    """Moving average that keeps the input length even when the input is shorter than the window."""
+    """Moving average with the same length as the input. The ends are padded with the edge values,
+    not zeros, so the first and last moments aren't dragged toward silence (or, in dB, toward loud)."""
     import numpy as np
 
     x = np.asarray(x, dtype=float)
     k = max(1, min(int(k), len(x)))
-    return np.convolve(x, np.ones(k) / k, mode="same")
+    if k == 1:
+        return x.copy()
+    padded = np.pad(x, (k // 2, k - 1 - k // 2), mode="edge")
+    return np.convolve(padded, np.ones(k) / k, mode="valid")
 
 
 def ff_path(p):
