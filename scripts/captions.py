@@ -1,19 +1,27 @@
 """Word-by-word captions (the highlighted-word style talking videos use), burned in or as files.
 
 Usage: python captions.py VIDEO TRANSCRIPT [--map cut.map.json] [--style highlight|pop|plain]
-                          [--words 3] [--position auto|top|center|lower] [--color yellow] [--upper]
+                          [--words 3] [--position auto|top|center|lower] [--color yellow] [--no-upper]
+                          [--emphasis auto|none|"word,word"] [--emphasis-color green]
                           [--out captioned.mp4] [--files-only] [--preview]
 
 TRANSCRIPT comes from `vlog_cut.py transcribe`. If the video was cut with `vlog_cut.py cut`, pass the
 cut's .map.json so word times follow the edit (words that were cut out are dropped).
 Writes <out>.ass (styled, for burn-in or editors) and <out>.srt (plain, for platform upload).
 Positions stay inside the TikTok/Reels/Shorts safe zone on vertical video.
+--emphasis auto colours the key word of some caption groups (numbers and scores, words said
+louder than the rest, words written in caps or with "!"), plus any keywords you list. It's the
+"bold the key word" trick that retention editors use, kept rare so it stays special.
 """
 
 import argparse
+import re
+import subprocess
 from pathlib import Path
 
-from common import die, ff_path, ffmpeg, load_json, probe, safe_copy
+import numpy as np
+
+from common import die, ff_path, ffmpeg, load_json, need, probe, safe_copy
 
 COLORS = {
     "yellow": "&H0000FFFF&",
@@ -38,9 +46,101 @@ def remap_words(words, mapping):
     return out
 
 
+STOP = set(
+    """a an and are as at be but by for from had has have he her his i if in into is it its just like me my no
+not of on or our out she so than that the their them then there these they this to too up us was we were what when
+where which who will with you your yeah okay ok um uh oh like really very gonna wanna got get its im youre dont cant
+thats theres lets one all about can do did does going go know right think want""".split()
+)
+
+
+def word_loudness(video, words):
+    """dB of each word relative to the speaker's typical level (positive = said louder)."""
+    res = subprocess.run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(video),
+            "-map",
+            "0:a:0",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-f",
+            "f32le",
+            "-",
+        ],
+        capture_output=True,
+    )
+    x = np.frombuffer(res.stdout, np.float32)
+    if not len(x):
+        return [0.0] * len(words)
+    db = []
+    for w in words:
+        a, b = int(w["start"] * 16000), int(max(w["end"], w["start"] + 0.05) * 16000)
+        seg = x[a:b]
+        db.append(10 * np.log10(np.mean(seg**2) + 1e-10) if len(seg) else -100.0)
+    db = np.array(db)
+    ok = db > -90
+    med = np.median(db[ok]) if ok.any() else 0.0
+    return list(np.where(ok, db - med, -99.0))
+
+
+def pick_emphasis(words, chunks, mode, loud=None):
+    """Indexes (into words) of the words to colour. At most one per caption group, in about a third of groups."""
+    if mode == "none":
+        return set()
+    wanted = set()
+    if mode != "auto":
+        wanted = {re.sub(r"[^a-z0-9]", "", k.lower()) for k in mode.split(",") if k.strip()}
+    idx = {id(w): i for i, w in enumerate(words)}
+    picks = []
+    for ch in chunks:
+        best, best_sc = None, 0.0
+        for w in ch:
+            raw = w["w"].strip()
+            n = re.sub(r"[^a-z0-9$%]", "", raw.lower())
+            if not n:
+                continue
+            sc = 0.0
+            if n.strip("$%") in wanted:
+                sc += 6
+            if re.search(r"\d", n) or n.startswith("$") or n.endswith("%"):
+                sc += 3.5
+            if len(raw) >= 2 and raw.isupper() and raw.isalpha():
+                sc += 2
+            if raw.endswith("!"):
+                sc += 1.5
+            if n not in STOP and len(n) >= 5:
+                sc += 1 + min(len(n) - 5, 4) * 0.15
+            if loud is not None:
+                d = loud[idx[id(w)]]
+                if d > 3:
+                    sc += min(d - 3, 6) * 0.6
+            if n in STOP:
+                sc = 0
+            if sc > best_sc:
+                best, best_sc = w, sc
+        picks.append((best_sc, best))
+    # keep the strongest, about a third of the groups, and anything the user asked for
+    scores = sorted((sc for sc, w in picks if w is not None), reverse=True)
+    cut = scores[max(0, len(picks) // 3 - 1)] if scores and len(picks) >= 3 else 0
+    out = set()
+    for sc, w in picks:
+        if w is not None and sc >= max(3.0, cut):
+            out.add(idx[id(w)])
+        elif w is not None and wanted and re.sub(r"[^a-z0-9]", "", w["w"].lower()) in wanted:
+            out.add(idx[id(w)])
+    return out
+
+
 def chunk(words, max_words, max_chars):
     chunks, cur = [], []
-    for i, w in enumerate(words):
+    for w in words:
         gap = w["start"] - cur[-1]["end"] if cur else 0
         text_len = sum(len(x["w"]) + 1 for x in cur) + len(w["w"])
         if cur and (
@@ -76,7 +176,19 @@ def clean(text, upper):
     return text.upper() if upper else text
 
 
-def build(words, W, H, style="highlight", max_words=3, position="auto", color="yellow", upper=True):
+def build(
+    words,
+    W,
+    H,
+    style="highlight",
+    max_words=3,
+    position="auto",
+    color="yellow",
+    upper=True,
+    emphasis="auto",
+    emph_color="green",
+    loud=None,
+):
     vertical = H > W
     size = int(H * (0.045 if vertical else 0.062))
     max_chars = 15 if vertical else 30
@@ -97,14 +209,27 @@ def build(words, W, H, style="highlight", max_words=3, position="auto", color="y
     pos = f"{{\\pos({W // 2},{int(H * y)})}}"
     events, srt = [], []
     chunks = chunk(words, max_words, max_chars)
+    emph = pick_emphasis(words, chunks, emphasis, loud)
+    ec = COLORS.get(emph_color, emph_color)
+    if ec == hl:
+        ec = COLORS["green"] if hl != COLORS["green"] else COLORS["yellow"]
+    gidx = {id(w): i for i, w in enumerate(words)}
     for ci, ch in enumerate(chunks):
         c_start = ch[0]["start"]
         nxt = chunks[ci + 1][0]["start"] if ci + 1 < len(chunks) else ch[-1]["end"] + 0.6
         c_end = min(ch[-1]["end"] + 0.25, nxt)
         texts = [clean(w["w"], upper) for w in ch]
+        is_em = [gidx[id(w)] in emph for w in ch]
         srt.append((c_start, c_end, " ".join(texts)))
         if style == "plain":
-            events.append((c_start, c_end, pos + " ".join(texts)))
+            events.append(
+                (
+                    c_start,
+                    c_end,
+                    pos
+                    + " ".join(f"{{\\c{ec}\\fscx112\\fscy112}}{t}{{\\r}}" if em else t for t, em in zip(texts, is_em)),
+                )
+            )
             continue
         for k, w in enumerate(ch):
             s = c_start if k == 0 else w["start"]
@@ -113,17 +238,21 @@ def build(words, W, H, style="highlight", max_words=3, position="auto", color="y
                 continue
             parts = []
             for j, t in enumerate(texts):
+                col = ec if is_em[j] else hl
                 if j == k:
+                    big = 122 if is_em[j] else 115
                     if style == "pop":
-                        parts.append(f"{{\\c{hl}\\fscx85\\fscy85\\t(0,90,\\fscx115\\fscy115)}}{t}{{\\r}}")
+                        parts.append(f"{{\\c{col}\\fscx85\\fscy85\\t(0,90,\\fscx{big}\\fscy{big})}}{t}{{\\r}}")
                     else:
-                        parts.append(f"{{\\c{hl}\\fscx110\\fscy110}}{t}{{\\r}}")
+                        parts.append(f"{{\\c{col}\\fscx{big - 5}\\fscy{big - 5}}}{t}{{\\r}}")
+                elif is_em[j]:
+                    parts.append(f"{{\\c{ec}\\fscx108\\fscy108}}{t}{{\\r}}")
                 else:
                     parts.append(t)
             events.append((s, e, pos + " ".join(parts)))
     ass = header + "".join(f"Dialogue: 0,{ass_time(s)},{ass_time(e)},Cap,,0,0,0,,{t}\n" for s, e, t in events)
     srt_txt = "".join(f"{i}\n{srt_time(s)} --> {srt_time(e)}\n{t}\n\n" for i, (s, e, t) in enumerate(srt, 1))
-    return ass, srt_txt, len(chunks)
+    return ass, srt_txt, len(chunks), len(emph)
 
 
 if __name__ == "__main__":
@@ -136,6 +265,8 @@ if __name__ == "__main__":
     ap.add_argument("--position", choices=["auto", "top", "center", "lower"], default="auto")
     ap.add_argument("--color", default="yellow", help=f"highlight colour: {', '.join(COLORS)}")
     ap.add_argument("--no-upper", action="store_true", help="keep normal case (default is ALL CAPS)")
+    ap.add_argument("--emphasis", default="auto", help='auto, none, or keywords to colour: "clutch,1v4,insane"')
+    ap.add_argument("--emphasis-color", default="green", help="colour for emphasised words")
     ap.add_argument("--out", default="captioned.mp4")
     ap.add_argument("--files-only", action="store_true", help="only write .ass/.srt, don't render")
     ap.add_argument("--preview", action="store_true")
@@ -148,7 +279,12 @@ if __name__ == "__main__":
         die("Transcript has no word timings. Re-run vlog_cut.py transcribe.")
     words = remap_words(words, load_json(a.map) if a.map else None)
     W, H = info["width"], info["height"]
-    ass, srt, n = build(words, W, H, a.style, a.words, a.position, a.color, not a.no_upper)
+    loud = word_loudness(a.video, words) if a.emphasis != "none" and info["has_audio"] else None
+    ass, srt, n, n_em = build(
+        words, W, H, a.style, a.words, a.position, a.color, not a.no_upper, a.emphasis, a.emphasis_color, loud
+    )
+    if a.emphasis != "none":
+        print(f"  key word coloured in {n_em} of {n} caption groups")
     out = Path(a.out)
     out.with_suffix(".ass").write_text(ass, encoding="utf-8")
     out.with_suffix(".srt").write_text(srt, encoding="utf-8")
