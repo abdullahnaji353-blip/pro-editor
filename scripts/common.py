@@ -219,6 +219,23 @@ def probe(path):
                 continue
             info["has_video"] = True
             info["width"], info["height"] = s.get("width"), s.get("height")
+            # phones often store portrait video as landscape + a rotation flag; ffmpeg turns the
+            # frames upright when decoding, so report the size you actually get
+            rot = 0
+            for sd in s.get("side_data_list") or []:
+                if "rotation" in sd:
+                    try:
+                        rot = int(round(float(sd["rotation"])))
+                    except (TypeError, ValueError):
+                        pass
+            if not rot and (s.get("tags") or {}).get("rotate"):
+                try:
+                    rot = int(s["tags"]["rotate"])
+                except ValueError:
+                    pass
+            info["rotation"] = rot
+            if abs(rot) % 180 == 90 and info["width"] and info["height"]:
+                info["width"], info["height"] = info["height"], info["width"]
             rate = s.get("avg_frame_rate") or s.get("r_frame_rate") or "0/1"
             num, den = (rate.split("/") + ["1"])[:2]
             try:
