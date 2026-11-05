@@ -150,7 +150,7 @@ def build_lut(chain, path, n=LUT_SIZE):
         if res.returncode or len(res.stdout) != len(raw):
             die("Couldn't build the colour LUT: " + res.stderr.decode(errors="replace")[-300:])
         raw = res.stdout
-    out = np.frombuffer(raw, "<u2").reshape(-1, 3) / 65535
+    out = np.frombuffer(raw, "<u2").reshape(-1, 3) / 65535 if chain else lattice.reshape(-1, 3)
     with open(path, "w", encoding="utf-8") as f:
         f.write(f'TITLE "pro-editor grade"\nLUT_3D_SIZE {n}\nDOMAIN_MIN 0 0 0\nDOMAIN_MAX 1 1 1\n')
         f.write("\n".join(f"{x:.6f} {y:.6f} {z:.6f}" for x, y, z in out) + "\n")
