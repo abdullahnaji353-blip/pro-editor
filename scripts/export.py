@@ -15,6 +15,7 @@ Platforms: tiktok, reels, shorts (9:16 1080x1920), square (1:1), feed (4:5 1080x
 
 import argparse
 import shutil
+import tempfile
 from pathlib import Path
 
 from common import (
@@ -176,10 +177,8 @@ if __name__ == "__main__":
     dur = info["duration"]
 
     yt_res = resolve_res(a.res, [a.input])
-    import tempfile as _tf
-
-    _tmp = _tf.TemporaryDirectory()
-    tmpdir = _tmp.name
+    scratch = tempfile.TemporaryDirectory()  # removed automatically when the script exits
+    tmpdir = scratch.name
     done = {}
     for p in a.platforms:
         aspect, W, H, max_len = PLATFORMS[p]

@@ -50,9 +50,9 @@ def resolve_regions(spec):
 
 
 def safe_margins(W, H, platform="tiktok"):
-    t, b, l, r = SAFE.get(platform, SAFE["tiktok"])
+    top, bottom, left, right = SAFE.get(platform, SAFE["tiktok"])
     sx, sy = W / 1080, H / 1920
-    return int(t * sy), int(b * sy), int(l * sx), int(r * sx)
+    return int(top * sy), int(bottom * sy), int(left * sx), int(right * sx)
 
 
 def center_crop(W, H):
@@ -158,7 +158,8 @@ def cmd_safe(a):
         ]
     )
     print(
-        f"{Path(a.out).resolve()}\n  Red = covered by {a.platform}'s buttons/captions. Keep text and HUD insets out of it."
+        f"{Path(a.out).resolve()}\n  Red = covered by {a.platform}'s buttons/captions. "
+        "Keep text and HUD insets out of it."
     )
 
 

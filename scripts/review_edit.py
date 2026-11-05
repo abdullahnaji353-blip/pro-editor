@@ -117,7 +117,8 @@ def review(path, recipe=None, out_dir="review", song=None, song_start=0.0):
                 notes.append(f"Beat sync is decent but loose: {sync}% on the music vs ~{chance}% for random cuts.")
             else:
                 fix.append(
-                    f"Cuts mostly ignore the music: {sync}% on a beat/hit, about what random cutting gets (~{chance}%). "
+                    f"Cuts mostly ignore the music: {sync}% on a beat/hit, "
+                    f"about what random cutting gets (~{chance}%). "
                     "Turn on audio waveform/beat markers in your editor and cut on the kicks and snares."
                 )
         if off_beat and grid_suspect:
@@ -208,7 +209,8 @@ def review(path, recipe=None, out_dir="review", song=None, song_start=0.0):
             cmp["pace"] = {"yours": stats["median_shot_sec"], "target": tgt}
             if ratio > 1.4:
                 fix.append(
-                    f"Slower than the target style: your shots average {stats['median_shot_sec']}s vs {tgt}s. Cut more often."
+                    f"Slower than the target style: your shots average {stats['median_shot_sec']}s vs {tgt}s. "
+                    "Cut more often."
                 )
             elif ratio < 0.7:
                 fix.append(

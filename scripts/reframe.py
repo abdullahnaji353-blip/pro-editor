@@ -65,7 +65,7 @@ def detect_faces(video, info):
         c, s = float("nan"), 0.0
         if len(faces):
             # biggest face, but prefer staying on the same person between samples
-            def rank(f):
+            def rank(f, prev=prev):  # bind this pass's value explicitly
                 x, y, w, hh = f
                 centre = (x + w / 2) / DET_W
                 stick = 0.0 if prev is None else abs(centre - prev)

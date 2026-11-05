@@ -61,7 +61,7 @@ def build_pieces(spec, dur):
             ranges.append((at - float(op.get("before", 0.8)), at, float(op.get("fast", 2.0))))
             ranges.append((at, at + float(op.get("after", 0.6)), float(op.get("slow", 0.4))))
     ranges = sorted((max(a, t0), min(b, t1), s) for a, b, s in ranges if b > t0 and a < t1)
-    for (a1, b1, _), (a2, _, _) in zip(ranges, ranges[1:]):
+    for (_, b1, _), (a2, _, _) in zip(ranges, ranges[1:]):
         if a2 < b1 - 1e-6:
             die(f"Speed ranges overlap around {a2:.2f}s. Adjust the ops.")
     freezes = sorted(

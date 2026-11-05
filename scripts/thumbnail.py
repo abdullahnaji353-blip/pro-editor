@@ -122,7 +122,7 @@ def cmd_candidates(a):
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     font = find_font()
-    for i, (s, t, _) in enumerate(picks, 1):
+    for i, (_, t, _) in enumerate(picks, 1):
         label = (
             (
                 f",drawtext=fontfile='{ff_path(font)}':text='#{i}  {t:.1f}s':fontsize=28:fontcolor=white:"
@@ -164,7 +164,7 @@ def cmd_candidates(a):
         out / "candidates.json",
     )
     print(f"{out / 'candidates.png'}")
-    for i, (s, t, _) in enumerate(picks, 1):
+    for i, (_, t, _) in enumerate(picks, 1):
         print(f"  #{i}  {t:.2f}s  score {s:.2f}")
 
 
