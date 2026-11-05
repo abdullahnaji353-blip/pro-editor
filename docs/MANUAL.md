@@ -327,6 +327,20 @@ Want the photoreal "tiny me in my hand" look? That's made with AI video tools (S
 Runway). Claude can write the prompt for those, or you can bring an AI-made green-screen character
 back into your own footage with `/avatar`.
 
+### /create: a video from scratch
+
+For explainers, facts, data stories and trailers: no footage needed. Claude researches the topic,
+writes a script with one idea per scene, and codes each scene as an animation (titles, counting
+numbers, growing bars, drawn lines). A hidden browser records every frame, so text and numbers stay
+sharp. Your computer reads the narration (on a Mac it uses the same voices as `say`), music ducks
+under it, and captions follow the words.
+
+> "/create a 40-second TikTok about why the Roman Empire fell, dark style, deep male voice"
+
+Before the slow render Claude checks a sheet of still frames from every scene and fixes anything
+cut off or overlapping. It's motion graphics, not filmed footage: for realistic shots you'd generate
+clips with an AI video tool and drop them into a scene.
+
 ### /shorts: one long video, several clips
 
 Give it a stream, podcast, commentary or interview. It finds stretches of whole sentences (20-60 s by

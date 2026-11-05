@@ -1,0 +1,29 @@
+/* pro-editor /create kit: a neutral starting look for code-drawn scenes. Override the variables per video. */
+:root {
+  --bg: #0e1013; --panel: #171a20; --line: #2a2f37;
+  --text: #f3f0e9; --muted: #9ba3ad; --accent: #21d4ed; --accent-2: #ffd23f; --warn: #ff5c4d;
+  --font: "SF Pro Display", -apple-system, "Segoe UI", "Helvetica Neue", Inter, Arial, sans-serif;
+  --mono: "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --pad: 90px;            /* outer margin */
+  --safe-bottom: 360px;   /* vertical video: keep text above the app's caption/button area */
+}
+* { box-sizing: border-box; margin: 0; padding: 0; animation: none !important; transition: none !important; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: var(--font); -webkit-font-smoothing: antialiased; }
+.stage { position: absolute; inset: 0; padding: var(--pad); display: flex; flex-direction: column;
+  justify-content: center; gap: 36px; }
+body.v .stage { padding-bottom: var(--safe-bottom); }
+.kicker { font: 600 34px/1.2 var(--mono); color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
+.title { font-weight: 800; font-size: 110px; line-height: 1.02; letter-spacing: -0.02em; }
+body.h .title { font-size: 96px; }
+.subtitle { font-size: 46px; line-height: 1.3; color: var(--muted); }
+.big { font-weight: 800; font-size: 260px; line-height: .95; letter-spacing: -0.04em; color: var(--accent); }
+.body { font-size: 52px; line-height: 1.35; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 32px; padding: 48px; }
+.row { display: flex; gap: 32px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 28px; }
+.accent { color: var(--accent); } .muted { color: var(--muted); } .hl { color: var(--accent-2); }
+.bar { height: 64px; border-radius: 16px; background: var(--accent); transform-origin: left center; }
+.source { position: absolute; left: var(--pad); bottom: 48px; font: 400 26px/1.3 var(--mono); color: var(--muted); }
+body.v .source { bottom: calc(var(--safe-bottom) - 80px); }
+svg .draw { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }

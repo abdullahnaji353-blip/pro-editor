@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+**New**
+- `/create`: informative videos from scratch. Claude researches the topic, scripts it scene by
+  scene and codes each scene as an animation (`create_kit`: reveals, typewriter text, counting
+  numbers, growing bars, line drawing). `create.py` records every frame in a headless browser,
+  voices the narration with the computer's own voices (`say`, Windows voices, espeak-ng, Piper),
+  ducks music under it, burns word-by-word captions and normalises loudness. A still-frame sheet
+  comes first so problems are fixed before the slow render.
+
 ## 0.9.0
 
 **New**

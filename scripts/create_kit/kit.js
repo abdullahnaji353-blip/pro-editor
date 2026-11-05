@@ -1,0 +1,54 @@
+// pro-editor /create kit. A scene defines window.render = (t, d) => {...}: t = seconds into the
+// scene, d = its length. Everything on screen is set from t, so every frame is exact and repeatable.
+// No requestAnimationFrame, CSS animations or timers: the renderer calls render() for each frame.
+(function () {
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const ease = {
+    out: (x) => 1 - Math.pow(1 - x, 3),
+    inOut: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+    back: (x) => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); },
+    lin: (x) => x,
+  };
+  const $ = (s) => document.querySelector(s);
+  const el = (x) => (typeof x === "string" ? $(x) : x);
+  const K = {
+    clamp, ease, $,
+    lerp: (a, b, x) => a + (b - a) * x,
+    // progress 0..1 of an action that starts at `start` and lasts `dur`, eased
+    p: (t, start, dur = 0.6, e = ease.out) => e(clamp((t - start) / dur)),
+    // fade + slide in; out at the scene's end when d is given
+    reveal(x, t, start, dur = 0.6, dy = 50, d = null) {
+      const n = el(x); if (!n) return;
+      let k = K.p(t, start, dur);
+      if (d !== null) k *= 1 - K.p(t, d - 0.35, 0.35, ease.inOut);
+      n.style.opacity = k; n.style.transform = `translateY(${(1 - k) * dy}px)`;
+    },
+    pop(x, t, start, dur = 0.5) {
+      const n = el(x); if (!n) return;
+      const k = K.p(t, start, dur, ease.back);
+      n.style.opacity = clamp(k * 3); n.style.transform = `scale(${0.6 + 0.4 * k})`;
+    },
+    type(x, text, t, start, cps = 32) {
+      const n = el(x); if (!n) return;
+      n.textContent = text.slice(0, Math.floor(clamp((t - start) * cps, 0, text.length)));
+    },
+    count(x, to, t, start, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US"), from = 0) {
+      const n = el(x); if (!n) return;
+      n.textContent = fmt(K.lerp(from, to, K.p(t, start, dur, ease.out)));
+    },
+    grow(x, frac, t, start, dur = 0.9, axis = "X") {
+      const n = el(x); if (!n) return;
+      n.style.transform = `scale${axis}(${frac * K.p(t, start, dur)})`;
+    },
+    draw(x, t, start, dur = 1.0) {           // stroke a path on, like a pen
+      const n = el(x); if (!n) return;
+      const L = n.getTotalLength(); n.style.strokeDasharray = L;
+      n.style.strokeDashoffset = L * (1 - K.p(t, start, dur, ease.inOut));
+    },
+    zoom(x, t, d, from = 1.0, to = 1.06) {    // slow push-in across the whole scene
+      const n = el(x); if (!n) return;
+      n.style.transform = `scale(${K.lerp(from, to, clamp(t / d))})`;
+    },
+  };
+  window.K = K;
+})();

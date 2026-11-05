@@ -38,6 +38,7 @@ for mod, why, pkg in (
     ("cv2", "face-tracking vertical crop and the avatar", '"opencv-python-headless<5"'),
     ("mediapipe", "the avatar's hand tracking and /talk's sound recognition (laughs, cheers...)", "mediapipe"),
     ("PIL", "the avatar's speech bubbles", "pillow"),
+    ("playwright", "/create (records the animated scenes)", "playwright && python -m playwright install chromium"),
 ):
     try:
         m = importlib.import_module(mod)
