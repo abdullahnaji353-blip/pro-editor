@@ -1,9 +1,12 @@
 """/create: make a video from scratch: code-drawn scenes, a voiceover, music and captions.
 
 Commands
-  voice  PROJECT.json [--engine auto|say|sapi|espeak|piper|none] [--voice NAME] [--force]
-         Writes a voiceover for every scene that has "narration" (vo/<id>.wav) with the computer's
-         own voices, then sizes each scene to its narration. Scenes with an "audio" file use it.
+  voice  PROJECT.json [--engine auto|say|sapi|espeak|piper|elevenlabs|none] [--voice NAME] [--force]
+         Writes a voiceover for every scene that has "narration" (vo/<id>.wav), then sizes each
+         scene to its narration. Scenes with an "audio" file use it. With "voiceover": "vo.mp3"
+         (one recording of the whole script: an AI voice from ElevenLabs or another tool, or the
+         user's own) it is cut at the pauses between scenes instead. elevenlabs needs
+         ELEVENLABS_API_KEY; --voice is then a voice id.
   sheet  PROJECT.json [--out sheet.jpg]
          Three stills per scene (just in, middle, about to leave) in one image: check this before
          the slow render.
@@ -14,12 +17,13 @@ Commands
 PROJECT.json
   {"title": "...", "size": "1080x1920", "fps": 30,
    "music": "song.mp3", "music_volume": 0.18, "captions": true,
-   "voice": {"engine": "auto", "voice": null},
+   "voice": {"engine": "auto", "voice": null}, "voiceover": null,
    "scenes": [{"id": "01-hook", "html": "scenes/01-hook.html", "narration": "...", "min_duration": 2.5}]}
 
 Each scene is an HTML file that defines window.render = (t, d) => {...} and draws everything from t
 (seconds into the scene). The kit in create_kit/ (kit.css, kit.js: K.reveal, K.count, K.type,
-K.grow, K.draw...) is loaded into every scene. Paths are relative to PROJECT.json.
+K.grow, K.draw...) and host.js (K.host: an animated presenter that lip-syncs to the voice; K.talk(t)
+is the voice's loudness right now, 0-1) are loaded into every scene. Paths are relative to PROJECT.json.
 """
 
 import argparse
@@ -99,6 +103,8 @@ def speak(engine, text, voice, dst):
             raw = raw.with_suffix(".wav")
             exe = shutil.which("espeak-ng") or "espeak"
             cmd = [exe, "-w", str(raw)] + (["-v", voice] if voice else []) + [text]
+        elif engine == "elevenlabs":
+            return elevenlabs(text, voice, dst)
         elif engine == "piper":
             raw = raw.with_suffix(".wav")
             cmd = ["piper", "--model", os.environ["PRO_EDITOR_PIPER_MODEL"], "--output_file", str(raw)]
@@ -118,6 +124,144 @@ def speak(engine, text, voice, dst):
     return True
 
 
+def elevenlabs(text, voice, dst):
+    """ElevenLabs text to speech over its HTTP API (ELEVENLABS_API_KEY). Costs the user's credits."""
+    import json
+    import os
+    import urllib.request
+
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        die("Set ELEVENLABS_API_KEY to use --engine elevenlabs, or make the voiceover with the ElevenLabs connector.")
+    vid = voice or "JBFqnCBsd6RMkjVDRZzb"
+    req = urllib.request.Request(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{vid}?output_format=mp3_44100_128",
+        data=json.dumps(
+            {"text": text, "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")}
+        ).encode(),
+        headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+    )
+    with tempfile.TemporaryDirectory() as td:
+        mp3 = Path(td) / "a.mp3"
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                mp3.write_bytes(r.read())
+        except Exception as e:  # noqa: BLE001
+            print(f"ElevenLabs: {e}", file=sys.stderr)
+            return False
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-i", str(mp3), "-ar", "48000", "-ac", "1", str(dst)], check=True
+        )
+    return True
+
+
+def load_mono(path, sr=16000):
+    import numpy as np
+
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(path), "-f", "f32le", "-ac", "1", "-ar", str(sr), "-"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    return np.frombuffer(raw, dtype=np.float32), sr
+
+
+def pauses(x, sr, min_gap=0.22):
+    """Midpoints and lengths of the quiet stretches between words, in seconds."""
+    import numpy as np
+
+    hop = sr // 50
+    n = len(x) // hop
+    if n == 0:
+        return []
+    rms = np.sqrt(np.mean(x[: n * hop].reshape(n, hop) ** 2, axis=1) + 1e-12)
+    quiet = rms < max(np.percentile(rms, 95) * 0.06, 1e-4)
+    out, i = [], 0
+    while i < n:
+        if quiet[i]:
+            j = i
+            while j < n and quiet[j]:
+                j += 1
+            if (j - i) / 50 >= min_gap and i > 0 and j < n:
+                out.append(((i + j) / 100, (j - i) / 50))
+            i = j
+        else:
+            i += 1
+    return out
+
+
+def split_points(gaps, weights, total):
+    """One cut per scene boundary: the pause nearest where the words say it should be, longer pauses preferred."""
+    cuts, cum, last = [], 0.0, 0.0
+    tw = sum(weights) or 1
+    for w in weights[:-1]:
+        cum += w
+        want = total * cum / tw
+        ok = [g for g in gaps if g[0] > last + 0.3]
+        if not ok:
+            cut = max(want, last + 0.3)
+        else:
+            cut = min(ok, key=lambda g: abs(g[0] - want) / (0.5 + g[1]))[0]
+        cuts.append(cut)
+        last = cut
+    return cuts
+
+
+def split_voiceover(base, pj):
+    """Cut one whole-script recording into per-scene lines at the pauses between them."""
+    src = base / pj["voiceover"]
+    if not src.exists():
+        die(f"voiceover file not found: {src}")
+    scenes = [s for s in pj["scenes"] if s.get("narration")]
+    if not scenes:
+        die('"voiceover" needs "narration" on the scenes it covers.')
+    x, sr = load_mono(src)
+    total = len(x) / sr
+    cuts = split_points(pauses(x, sr), [len(s["narration"].split()) for s in scenes], total)
+    edges = [0.0, *cuts, total]
+    for s, a, b in zip(scenes, edges, edges[1:]):
+        dst = base / "vo" / f"{s['id']}.wav"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                str(src),
+                "-ss",
+                f"{a:.3f}",
+                "-to",
+                f"{b:.3f}",
+                "-af",
+                "silenceremove=start_periods=1:start_threshold=-50dB,areverse,"
+                "silenceremove=start_periods=1:start_threshold=-50dB,areverse",
+                "-ar",
+                "48000",
+                "-ac",
+                "1",
+                str(dst),
+            ],
+            check=True,
+        )
+        s["audio"] = str(dst.relative_to(base))
+    return len(scenes)
+
+
+def amp_envelope(path, fps, lead=0.15):
+    """Voice loudness 0-1 per video frame (lead = when the line starts in the scene), for lip-sync."""
+    import numpy as np
+
+    x, sr = load_mono(path)
+    hop = sr / fps
+    n = int(len(x) / hop)
+    if n == 0:
+        return []
+    env = np.array([np.sqrt(np.mean(x[int(i * hop) : int((i + 1) * hop)] ** 2)) for i in range(n)])
+    env = np.clip(env / (np.percentile(env, 95) + 1e-6), 0, 1)
+    return [0.0] * int(round(lead * fps)) + [round(float(v), 3) for v in env]
+
+
 def cmd_voice(a):
     path, pj, W, H, fps = load_project(a.project)
     base = path.parent
@@ -126,6 +270,10 @@ def cmd_voice(a):
     voice = a.voice or vcfg.get("voice")
     (base / "vo").mkdir(exist_ok=True)
     made = 0
+    if pj.get("voiceover"):
+        made = split_voiceover(base, pj)
+        engine = "voiceover file"
+        print(f"Cut {pj['voiceover']} into {made} line(s) at its pauses: listen to vo/ to check the cuts")
     for s in pj["scenes"]:
         audio = s.get("audio")
         if not audio and s.get("narration") and engine != "none":
@@ -142,7 +290,8 @@ def cmd_voice(a):
         else:
             s.pop("audio_duration", None)
             s["duration"] = round(scene_duration({**s, "duration": None}), 3)
-    pj.setdefault("voice", {})["engine"] = engine
+    if engine != "voiceover file":
+        pj.setdefault("voice", {})["engine"] = engine
     if pj.get("sync") in ("beats", "bars"):
         if snap_durations(pj, song_beats(base, pj)):
             print(f"Scenes snapped to the music's {pj['sync']}")
@@ -211,10 +360,13 @@ def scene_beats(pj, beats, durs):
 
 
 # ------------------------------------------------------------------ drawing
-def open_scene(page, base, scene, W, H, beat_info=None):
+def open_scene(page, base, scene, W, H, beat_info=None, fps=30):
     page.goto((base / scene["html"]).resolve().as_uri())
     page.add_style_tag(path=str(KIT / "kit.css"))
     page.add_script_tag(path=str(KIT / "kit.js"))
+    page.add_script_tag(path=str(KIT / "host.js"))
+    amp = amp_envelope(base / scene["audio"], fps) if scene.get("audio") else None
+    page.evaluate(f"(a) => {{ window.AMP = a; window.AMP_FPS = {fps}; }}", amp)
     page.evaluate(f"document.body.classList.add('{'v' if H > W else 'h'}')")
     page.evaluate(
         "(b) => { window.BEATS = b.beats; window.DOWNBEATS = b.downbeats; window.DROPS = b.drops; }",
@@ -227,7 +379,11 @@ def open_scene(page, base, scene, W, H, beat_info=None):
 
 
 def draw(page, t, d):
-    page.evaluate(f"window.render({t:.5f}, {d:.5f})")
+    # waits for any K.clip video to land on its frame
+    page.evaluate(
+        f"(async () => {{ window.__pending = []; window.render({t:.5f}, {d:.5f});"
+        " if (window.__pending.length) await Promise.all(window.__pending); })()"
+    )
 
 
 def cmd_sheet(a):
@@ -268,7 +424,7 @@ def cmd_sheet(a):
 def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None):
     d = scene_duration(s)
     n = max(1, round(d * fps))
-    open_scene(page, base, s, W, H, beat_info)
+    open_scene(page, base, s, W, H, beat_info, fps)
     tmp = dst.with_name(dst.stem + ".part.mp4")
     ow, oh = (W // 2 // 2 * 2, H // 2 // 2 * 2) if preview else (W, H)
     ff = subprocess.Popen(
@@ -483,7 +639,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("voice")
     v.add_argument("project")
-    v.add_argument("--engine", choices=["auto", "say", "sapi", "espeak", "piper", "none"])
+    v.add_argument("--engine", choices=["auto", "say", "sapi", "espeak", "piper", "elevenlabs", "none"])
     v.add_argument("--voice")
     v.add_argument("--force", action="store_true", help="record again even if the file exists")
     s = sub.add_parser("sheet")

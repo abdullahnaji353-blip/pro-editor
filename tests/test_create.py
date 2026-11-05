@@ -48,3 +48,26 @@ def test_no_sync_without_music_beats():
     from create import snap_durations
 
     assert not snap_durations({"sync": "bars", "scenes": [{"duration": 3}]}, None)
+
+
+def test_whole_voiceover_is_cut_at_the_pauses_between_scenes():
+    import numpy as np
+
+    from create import pauses, split_points
+
+    sr = 16000
+    tone = lambda s: 0.3 * np.sin(np.arange(int(s * sr)) * 0.2)  # noqa: E731
+    gap = lambda s: np.zeros(int(s * sr))  # noqa: E731
+    # three lines: 2 s, pause, 1 s (with a short breath inside), pause, 3 s
+    x = np.concatenate([tone(2), gap(0.6), tone(0.5), gap(0.15), tone(0.5), gap(0.5), tone(3)]).astype(np.float32)
+    gaps = pauses(x, sr)
+    assert len(gaps) == 2  # the breath is too short to count
+    cuts = split_points(gaps, [10, 5, 15], len(x) / sr)
+    assert abs(cuts[0] - 2.3) < 0.1 and abs(cuts[1] - 4.0) < 0.1
+
+
+def test_split_never_goes_backwards_without_pauses():
+    from create import split_points
+
+    cuts = split_points([], [1, 1, 1, 1], 8.0)
+    assert cuts == sorted(cuts) and len(cuts) == 3 and cuts[0] > 0

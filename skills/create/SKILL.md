@@ -4,12 +4,13 @@ description: >
   This skill should be used when the user invokes /create, or asks to "make a video about X",
   "make a hype intro", "kinetic typography", "lyric video", "promo / ad for my product", "channel
   intro or outro", "animated meme", "make an explainer", "faceless video", "make a video with AI",
-  "motion graphics", "a video like the ones made with Claude", or wants any video made from scratch
+  "motion graphics", "a video like the ones made with Claude", "AI voiceover", "add an AI presenter",
+  "use AI clips", or wants any video made from scratch
   rather than edited from their footage. Plans it, codes each scene as an animation (synced to the
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.11.0"
+  version: "0.12.0"
 ---
 
 # Create
@@ -75,6 +76,13 @@ into every scene automatically:
   `K.zoom(sel, t, d)`, `K.p(t, start, dur)` for anything custom
 - colours are CSS variables (`--bg`, `--text`, `--accent`...): restyle a whole video by overriding
   them in each scene's `<style>`.
+- **Presenter**: `K.host(t, d, {style: "orb" | "bot", pos: "br" | "bl" | "center"})` draws an
+  animated host whose mouth follows the real voiceover (`K.talk(t)` is the voice's loudness, 0-1).
+  `orb` is a hologram face, `bot` is pro-editor's robot. Use it for faceless videos when the user
+  wants a narrator on screen. Never draw someone else's mascot or character (Claude's, a game's, a
+  brand's); offer one of these or the user's own PNG instead.
+- **Footage**: `<video src="clip.mp4"></video>` plus `K.clip(sel, t, start)` plays a clip in step
+  with the frame (AI clips, screen recordings, the user's b-roll), under text and graphics.
 
 Never use CSS animations, timers or `requestAnimationFrame`: the renderer calls `render()` once per
 frame. Only touch `K` inside `render`. Vertical video: keep text out of the bottom ~18% (the app's
@@ -89,10 +97,18 @@ python3 $S/create.py render <work>/project.json --preview
 python3 $S/create.py render <work>/project.json        # full quality
 ```
 
-- **Voice** uses the computer's own voices: `say` on a Mac (`--voice Samantha`, `Daniel`...; list
-  them with `say -v ?`), Windows' built-in voices, espeak-ng or Piper on Linux. No voice available:
-  `--engine none` times scenes for reading. A user with a better voice (ElevenLabs or another TTS
-  connector, or their own recording) can drop files in and set `"audio"` per scene.
+- **Voice**, best first:
+  1. **AI voice** with a voice connector (ElevenLabs) when one is connected: list its voices, pick
+     one that fits (say which), generate the **whole script as one take** (more natural than line by
+     line, and one credit charge), download it to the work folder and set `"voiceover": "vo.mp3"`.
+     `voice` then cuts it at the pauses between scenes and times every scene to its line; listen
+     to `vo/` if a cut sounds off. It spends the user's credits: never retry a generation on your
+     own, and if the service is busy, say so and carry on with the visuals.
+  2. `--engine elevenlabs` when the user has `ELEVENLABS_API_KEY` set (`--voice <voice id>`).
+  3. The computer's own voices: `say` on a Mac (`--voice Samantha`, `Daniel`; `say -v ?` lists
+     them), Windows' voices, espeak-ng or Piper on Linux.
+  4. Their own recording: `"voiceover"` for one file, or `"audio"` per scene.
+  No voice at all: `--engine none` times scenes for reading.
 - **Look at the sheet before rendering**: text overflow, things overlapping, empty frames, a scene
   that ends before its last element appears. Fix the HTML and re-sheet; it takes seconds.
 - `render --only <scene id>` redraws one scene and reuses the rest.
@@ -102,6 +118,11 @@ python3 $S/create.py render <work>/project.json        # full quality
 ## 6. Finish
 
 Show the video, list the sources, and offer `/export` (platform sizes, title, hashtags) and
-`/thumbnail`. Be clear about what it is: motion graphics, not filmed or AI-generated footage. For
-realistic shots, the user would need an AI video tool (Veo, Kling, Seedance, Runway) and can drop
-those clips into a scene as `<video>` files.
+`/thumbnail`. Be clear about what it is: motion graphics, with an AI voice or AI clips if used.
+
+**AI footage**: when the user wants realistic shots and has an AI video tool connected (Higgsfield,
+Veo, Kling, Seedance, Runway), check the cost first and tell them before spending their credits,
+generate short clips for the scenes that need them (scenery, objects, an establishing shot) and
+lay them in with `K.clip`, with the text and the host on top. Ask which tool if they named none,
+and use none they ruled out. Never generate realistic footage of a real person: for a video about
+someone, use places, objects, graphics and their own words, not a synthetic face.

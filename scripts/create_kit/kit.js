@@ -53,6 +53,23 @@
     bar: (t, decay = 0.35) => K.beat(t, decay, window.DOWNBEATS || []),
     drop: (t, decay = 0.6) => K.beat(t, decay, window.DROPS || []),
     count_beats: (t) => (window.BEATS || []).filter((b) => b <= t).length,  // beats so far: word-per-beat text
+    // a video file in the scene (AI footage, a screen recording, b-roll): paused and seeked to the
+    // exact frame, so it renders in step with everything else. <video src="clip.mp4" muted></video>
+    clip(x, t, start = 0, rate = 1) {
+      const v = el(x); if (!v) return;
+      v.muted = true; v.pause();
+      const dur = v.duration || 1e9;
+      const want = Math.max(0, Math.min(dur - 0.05, (t - start) * rate));
+      if (Math.abs(v.currentTime - want) > 0.004 || v.readyState < 2) {
+        (window.__pending = window.__pending || []).push(new Promise((ok) => {
+          const done = () => { v.removeEventListener("seeked", done); ok(); };
+          v.addEventListener("seeked", done);
+          if (v.readyState < 1) v.addEventListener("loadedmetadata", () => { v.currentTime = want; }, { once: true });
+          else v.currentTime = want;
+          setTimeout(done, 3000);
+        }));
+      }
+    },
     zoom(x, t, d, from = 1.0, to = 1.06) {    // slow push-in across the whole scene
       const n = el(x); if (!n) return;
       n.style.transform = `scale(${K.lerp(from, to, clamp(t / d))})`;

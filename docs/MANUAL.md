@@ -335,16 +335,29 @@ the beats (`"sync": "bars"`). When facts are involved, Claude researches them fi
 
 Claude plans one idea per scene and codes each scene as an animation (words slamming in on the beat,
 counting numbers, growing bars, drawn lines). A hidden browser records every frame, so text and
-timing stay exact. If there's narration, your computer reads it (on a Mac, the same voices as
-`say`), music ducks under it, and captions follow the words.
+timing stay exact. Music ducks under the narration, and captions follow the words.
+
+Voiceover, best first:
+
+- An AI voice from ElevenLabs, if you've connected it in Claude: Claude picks a voice that fits,
+  generates the whole script as one take (it uses your ElevenLabs credits), and `create.py voice`
+  cuts it into lines at the pauses and times each scene to its line. With an API key instead, set
+  `ELEVENLABS_API_KEY` and use `--engine elevenlabs`.
+- Your computer's own voices (on a Mac, the same voices as `say`).
+- Your own recording: one file for the whole script (`"voiceover"`) or one per scene (`"audio"`).
+
+An on-screen presenter can narrate it: a hologram face or pro-editor's robot whose mouth moves with
+the actual voice (`K.host` in a scene). Claude won't draw other people's mascots here either.
 
 > "/create a 6-second hype intro for my channel, synced to intro.mp3"
 >
 > "/create a 40-second TikTok about why the Roman Empire fell, dark style, deep male voice"
 
 Before the slow render Claude checks a sheet of still frames from every scene and fixes anything
-cut off or overlapping. It's motion graphics, not filmed footage: for realistic shots you'd generate
-clips with an AI video tool and drop them into a scene.
+cut off or overlapping. It's motion graphics, not filmed footage. For realistic shots, clips from an
+AI video tool (Higgsfield, Veo, Kling, Runway; Claude checks the cost with you first) or your own
+b-roll go into a scene with `K.clip` and play frame-accurately under the text. Claude won't generate
+realistic footage of a real person.
 
 ### /shorts: one long video, several clips
 

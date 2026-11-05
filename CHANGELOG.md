@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.0
+
+- AI voiceover for `/create`: generate the whole script as one take with the ElevenLabs connector
+  (or `--engine elevenlabs` with an API key) and set `"voiceover"`; `create.py voice` cuts it into
+  scene lines at the pauses and times every scene to its line.
+- `K.host`: an animated presenter (hologram face or pro-editor's robot) whose mouth follows the real
+  voice. `K.talk(t)` gives the voice's loudness for your own animations.
+- `K.clip`: AI clips, screen recordings or b-roll inside a scene, seeked to the exact frame so they
+  stay in step with the text and graphics.
+
 ## 0.11.1
 
 - Fixes installing in the Claude app: the plugin description is under 500 characters and no skill

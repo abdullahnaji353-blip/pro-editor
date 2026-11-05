@@ -25,14 +25,15 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 - `/shorts`: turns a long stream, podcast or talking video into ranked vertical clips with captions,
   cut on whole sentences and framed on your face.
 - `/create`: makes any video from scratch, drawn with code: hype intros and kinetic typography
-  synced to your song, promos, lyric videos, memes, explainers with a researched script. Voiceover
-  with your computer's own voices, music and captions.
+  synced to your song, promos, lyric videos, memes, explainers with a researched script. AI
+  voiceover (ElevenLabs) or your computer's voices, an animated presenter that lip-syncs to it,
+  AI or real clips inside scenes, music and captions.
 - Exports for TikTok, Reels, Shorts and YouTube up to 4K, plus timelines for Premiere Pro and
   DaVinci Resolve and colour grades as `.cube` LUTs.
 
 ![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
-> Early version (0.11). Every tool is tested on generated test videos, but not much on real
+> Early version (0.12). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
 > Bug reports are very welcome.
 
@@ -106,7 +107,7 @@ up as `/pro-editor:start`, `/pro-editor:montage` and so on.
 | `/avatar` | "put a robot in my hand" | Hand-tracked animated character: waves, blinks, reacts to pokes, speech bubbles, talks with a voice line |
 | `/reference` | "find examples of this edit" | Web research for references, how each is made, what they share, then a plan |
 | `/shorts` | "make shorts from my stream" | Finds and ranks self-contained moments, then reframes and captions the ones you pick |
-| `/create` | "make a hype intro synced to this song" | Animates a video from scratch: intros, promos, lyric videos, memes, explainers; beat-synced, with voice and captions if wanted |
+| `/create` | "make a hype intro synced to this song" | Animates a video from scratch: intros, promos, lyric videos, memes, explainers; beat-synced, AI voice and a talking presenter if wanted |
 | `/trends` | "what edit style is trending?" | Current edit styles and sounds, turned into a style recipe |
 | `/style-match` | "edit it like these 3 videos" | Measures pace, beat sync, colour and effects in reference edits |
 | `/highlights` | "find the best moments" | Action, reactions or scenic shots |
