@@ -8,7 +8,7 @@ description: >
   Breaks reference edits down into a reusable style recipe (pacing, beat sync, color, effects)
   that the montage skill applies to the user's own footage.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Style Match

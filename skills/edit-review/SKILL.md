@@ -7,7 +7,7 @@ description: >
   off-beat cuts with exact timestamps and frame offsets, dead spots, hook, ending, loudness,
   and how it compares to a target style.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Edit Review

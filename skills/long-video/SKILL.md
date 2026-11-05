@@ -7,7 +7,7 @@ description: >
   sections (beat-synced montage parts and raw gameplay parts with their own audio), joins them
   with transitions, normalizes loudness, and writes YouTube chapters.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Long Video

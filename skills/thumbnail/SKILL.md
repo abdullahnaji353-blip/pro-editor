@@ -5,7 +5,7 @@ description: >
   image", "make a thumbnail for this video", or needs a cover for a long-form video or montage.
   Finds the sharpest, most colorful frames, then builds a 1280x720 thumbnail with big bold text.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Thumbnail

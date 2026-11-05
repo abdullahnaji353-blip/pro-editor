@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.8.0
+
+**New**
+- `/talk`: Claude hears everything in a video. Word-by-word transcript, plus sounds (laughter,
+  shouting, cheering, music, gunfire, explosions, engines, crying) through Google's YAMNet, and the
+  loudest moments. It follows instructions spoken while filming: "clip that" callouts become
+  highlights, "Claude/Editor, zoom in here / slow mo that / put the drop here", "cut that",
+  "let me redo that". Spoken commands are cut from the final video. Voice notes work as prompts.
+- `/avatar`: an animated character in your hand, tracked with MediaPipe. Original robot in solid or
+  hologram style, or your own PNG/GIF/alpha/green-screen character. It stands on the palm, floats
+  above it or sits on a fingertip, waves hello, blinks, reacts to pokes, appears on an open hand
+  and vanishes on a fist, and has speech bubbles and lip-flap to a voice line. Contact shadow, scene
+  colour/grain/softness matching, motion blur, One Euro smoothing.
+- `/reference`: web research for references (TikTok, Instagram, YouTube, Reddit, tutorials, GitHub),
+  how each is made, what they share, then the plan.
+- Captions colour the key word of some groups automatically (numbers, scores, words said louder,
+  caps), or the keywords you name.
+- Punch-ins can land on the punchline (`--punch-mode emphasis`) instead of every other cut.
+- Transcription: model picked for your hardware (large-v3-turbo on NVIDIA GPUs), hotwords for
+  names and slang, mixed-language speech, and Whisper hallucination guards (voice filtering, no
+  repetition loops, skipping text invented in long silences).
+- `vlog_cut.py cut --remove / --remove-file` cuts exact ranges.
+
+**Fixed**
+- Phone videos stored sideways with a rotation flag (common on iPhones) reported the wrong
+  width/height, which could squash vertical crops, colour sampling and cuts.
+
 ## 0.7.0
 
 **New**

@@ -7,7 +7,7 @@ description: >
   music edit from their clips and a song. Cuts clips on the beat, applies effects and color from a style recipe, and renders an
   MP4 plus an XML timeline that opens in Premiere Pro or DaVinci Resolve.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Montage

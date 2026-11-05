@@ -7,7 +7,7 @@ description: >
   travel and event footage. Measures and corrects exposure and colour casts, then applies an
   optional look.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Color

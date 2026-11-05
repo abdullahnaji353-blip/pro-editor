@@ -9,7 +9,7 @@ description: >
   word-by-word captions, face-tracking vertical crops, voice cleanup, punch-in zooms and
   YouTube chapters.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Vlog Edit
@@ -33,9 +33,12 @@ installing either. The first transcript downloads a speech model (a few hundred 
    light = good mic, quiet room; medium = default; strong = noisy room or phone mic (preview it,
    it can sound processed). It measures the recording's own noise floor, denoises, pushes hiss
    down between sentences, tames harsh "s" sounds, and evens out volume without killing hype moments.
-2. **Transcribe**: `python3 $S/vlog_cut.py transcribe <work>/clean.mp4 --out <work>/transcript.json`
-   (`--model medium` for accents/noisy audio, `--language en` to skip detection, `--audio-track N`
-   for multi-track recordings).
+2. **Transcribe**: `python3 $S/vlog_cut.py transcribe <work>/clean.mp4 --out <work>/transcript.json --hotwords "<names, places, slang>"`
+   The model is picked automatically (large-v3-turbo on an NVIDIA GPU, small on a CPU; `--model medium`
+   for heavy accents on a CPU). `--hotwords` fixes most misspelled names. `--language en` skips
+   detection. `--multilingual` for speakers who switch languages (Arabic and English, say).
+   `--audio-track N` for multi-track recordings. If they talked instructions into the recording
+   ("Claude, cut that", "let me redo that"), run `/talk` first: it finds those and lists them for removal.
 3. **Script (edit by text)**: `python3 $S/vlog_cut.py script <work>/clean.mp4 <work>/transcript.json --out <work>/script.txt`
    Read the script yourself. Lines flagged `RETAKE?` repeat in the next line or two: usually the
    first take goes. Also suggest cutting rambling, repeated points, "anyway so yeah" filler
@@ -50,6 +53,10 @@ installing either. The first transcript downloads a speech model (a few hundred 
    Pace guide: `--min-silence 0.3 --pad 0.08` = punchy short-form; `0.6 / 0.15` = relaxed long-form.
    **Punch-ins** (`--punch-in 1.12`): every other piece is zoomed in slightly, so jump cuts look
    like a second camera angle instead of a glitch. That's the standard YouTube talking-head trick.
+   `--punch-mode emphasis` zooms the pieces said with the most energy instead (punch in on the
+   punchline), never two in a row: better for short-form and storytelling.
+   `--remove "12.3-14.0,..."` or `--remove-file <work>/talk/<name>.talk.json` cuts exact ranges
+   (spoken commands, retakes confirmed with the user).
    `--punch-center 0.4` if the face sits left of centre. On 4K footage the zoom is free; on 1080p
    it costs a little sharpness (1.08-1.12 is fine, avoid going past 1.15). Skip it for vertical
    videos that will be reframed (the reframe already crops in).
@@ -59,7 +66,10 @@ installing either. The first transcript downloads a speech model (a few hundred 
    Check a few frames; detection struggles with side profiles, sunglasses, dark scenes.
 6. **Captions**:
    `python3 $S/captions.py <work>/vertical.mp4 <work>/transcript.json --map <work>/cut.map.json --out <work>/final.mp4`
-   Word-by-word, active word highlighted, ALL CAPS, inside the safe zone. `--style pop` (word pops
+   Word-by-word, active word highlighted, ALL CAPS, inside the safe zone. The key word of about a
+   third of the groups is coloured too (`--emphasis auto`: numbers, scores, words said louder,
+   caps or "!"); list must-have words with `--emphasis "clutch,1v4"`, turn it off with
+   `--emphasis none`, change its colour with `--emphasis-color`. `--style pop` (word pops
    in), `--style plain`, `--color green|cyan|pink|red|white`, `--words 2` for faster reading,
    `--position top|center|lower`, `--files-only` for just .ass/.srt (upload the .srt to YouTube
    for accessibility). Always pass `--map` when the video was cut, so captions follow the edit.

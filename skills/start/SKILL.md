@@ -7,7 +7,7 @@ description: >
   pro-editor plugin: checks the setup and the footage, works out what kind of edit the user wants,
   and routes to the right skills in the right order.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Start
@@ -36,6 +36,9 @@ rate or HDR, offer `--fix` and edit the fixed copies. Mention anything that chan
 - **Where is it going?** TikTok/Reels/Shorts (vertical, 15-30s) / YouTube video / both
 - **Auto or draft?** finished file, or an 80% draft + timeline to polish in Premiere/Resolve
 
+If they sent a voice note instead of typing, transcribe it first (`/talk`, prompt mode) and treat
+it as their request.
+
 Skip any question the request or footage already answers.
 
 ## 4. Route
@@ -46,9 +49,12 @@ Skip any question the request or footage already answers.
 | One specific moment | `/describe-clip` (find) → optionally edit it there or `/montage` |
 | Talking video / vlog | `/vlog-edit` (voice → transcript → script → jump cuts → vertical → captions → chapters) → `/color` → `/export` |
 | Travel / event recap | `/highlights --mode scenic` → `/color` (pick a look) → `/montage` → `/export` |
-| Funny moments | `/highlights --mode reactions` → `/montage` or `/describe-clip` |
+| Funny moments | `/talk` (hears laughs, shouting, cheering, "clip that") or `/highlights --mode reactions` → `/montage` or `/describe-clip` |
+| They talk in the footage, gave instructions out loud, or sent a voice note | `/talk` first, then whatever it calls for |
+| "Find me examples / references", "how do people make X" | `/reference` → the matching command |
+| A character / avatar / hologram / mascot in the video | `/avatar` |
 | Long YouTube video | `/highlights` per recording → `/long-video` → `/thumbnail` |
-| "What's trending?" | `/trends` |
+| "What's trending?" | `/trends` (or `/reference` for a specific idea) |
 | Feedback on their own edit | `/edit-review` |
 | Just resize/caption/post-ready | `/export` (+ `captions.py` for word-by-word captions) |
 | Title, description, hashtags | `/export` (post copy section) |

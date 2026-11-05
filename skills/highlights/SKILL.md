@@ -7,7 +7,7 @@ description: >
   footage to turn into short clips. Scores footage by action and sound (gaming), voice reactions
   (funny moments) or how good it looks (travel/events), and cuts out the top moments.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Highlights

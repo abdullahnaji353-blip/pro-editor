@@ -30,7 +30,8 @@ goes wrong. If you only read one thing, read **[Part 2: How a session works](#pa
 | ffmpeg | Does all the actual video work | Yes |
 | Python 3.9+ with `numpy`, `librosa`, `soundfile` | Beat detection, analysis, planning | Yes |
 | `faster-whisper` | Transcripts: jump cuts on "um", edit by text, captions, chapters | Only for talking videos |
-| `opencv-python-headless<5` | Face tracking for vertical crops | Only for vertical vlogs |
+| `opencv-python-headless<5` | Face tracking for vertical crops, and the avatar | Only for vertical vlogs / `/avatar` |
+| `mediapipe` | Hand tracking for `/avatar`; sound recognition (laughs, cheers, gunfire...) for `/talk` | Only for those two |
 | A graphics card (NVIDIA, AMD, Intel or Apple) | Faster final renders | No, the CPU works too |
 
 ### Install the plugin
@@ -66,11 +67,14 @@ python3 -m pip install numpy librosa soundfile
 
 # Optional
 python -m pip install faster-whisper                  # transcripts and captions
-python -m pip install "opencv-python-headless<5"      # face tracking
+python -m pip install "opencv-python-headless<5"      # face tracking, avatar
+python -m pip install mediapipe                       # avatar hand tracking, /talk sounds
 ```
 
-The first transcript downloads a speech model (about 75 MB for "tiny" and a few hundred MB for
-"small", the default). After that it works offline.
+The first transcript downloads a speech model (a few hundred MB for "small", the CPU default, and
+about 1.6 GB for "large-v3-turbo", used automatically on an NVIDIA graphics card). The avatar's
+hand-tracking model (about 7.5 MB) and /talk's sound model (about 4 MB) also download once. After
+that everything works offline.
 
 ### Prove it works: the self-test
 
@@ -216,6 +220,37 @@ section only re-renders that section.
 For big recordings Claude builds a **clip library** first: it samples frames into timestamped
 sheets, looks through them, and labels the moments. After that, any moment is one search away.
 
+### Talk while you film, then /talk
+
+Say instructions out loud while recording ("clip that" after a great play, "Claude, zoom in here",
+"cut that", "let me redo that"), then:
+
+> "/talk" + the recording (and, if you want, a typed or voice-note prompt like "make it a 30-second TikTok").
+
+Claude listens to everything: the words, plus laughs, shouting, cheering, music, gunfire and engines.
+It finds your spoken instructions and works out what each one applies to. It combines them with your
+prompt, tells you its plan in a few lines, then edits. Your spoken commands are cut out of the final
+video. "Clip that" moments and big laughs become highlights for a montage.
+
+### An avatar in your hand
+
+1. Film your open palm (good light, whole hand in frame, space above it). Want it to pop out of a
+   fist? Start with a fist and open your hand.
+2. "/avatar put a robot hologram in my hand that waves" + the clip.
+3. Claude shows you the avatar's looks, checks the hand tracking on a sheet of frames, renders a
+   preview, checks the placement, then renders full quality.
+
+Poke it with your other hand's index finger and it squishes, then gets heart eyes. Speech bubbles
+("Hi!" from 1.2 s to 3 s) and a voice line (its mouth moves with the audio) are optional.
+
+### Finding references first
+
+> "/reference smooth Rocket League freestyle edit with slow-mo on the touches"
+
+You get 3-6 real examples with links, what makes each one work, how it's made, and what they have
+in common. Then you pick: closest to the references, a mix, or your own twist. Claude turns that
+into a style recipe or plan and makes it.
+
 ### Getting better at editing
 
 Edit something yourself, then `/edit-review`:
@@ -237,6 +272,68 @@ Commands are shortcuts. Plain sentences work just as well. In Claude Code they m
 
 Use it when you don't know where to begin. Checks your setup, checks the footage, asks up to three
 questions, then runs the right commands in order and tells you the plan in a sentence first.
+
+### /talk: Claude listens
+
+Hears everything in a video or voice note:
+- **Words**: a word-by-word transcript. Names, slang and game terms come out better when Claude
+  passes them as hotwords; it does this from your prompt, and you can list them yourself
+  ("my friends are Zayd and Omar").
+  Speakers who switch languages (Arabic and English, say) are supported.
+- **Sounds**: laughter, shouting/screaming, cheering/applause, music, gunfire, explosions, engines,
+  crying, gasps (Google's YAMNet sound classifier, run on your computer).
+- **Energy**: the loudest moments.
+- **Your instructions**:
+
+| You say | Becomes |
+|---|---|
+| "clip that", "clip it", "that's a clip" | A highlight of the 12 s before (`--pre` changes it) |
+| "Claude, ..." or "Editor, ..." + zoom / slow mo / speed up / freeze / cut / keep / music / sound effect / text / thumbnail / start here / end here / avatar | That edit, at that point ("here/this" = after it, "that/it" = before it) |
+| "cut that", "scratch that" | Remove the sentence before |
+| "let me redo that", "one more time", "take two" | Retake: drop the flubbed take |
+
+It ignores normal speech that only sounds similar ("I clipped that guy", "the cloud today", "the
+editor at my school"). Anything unclear is marked `[confirm]`, and Claude checks it against the
+transcript or asks you. Spoken commands are removed from the final video unless you want them kept.
+
+Voice notes: send a voice message instead of typing, and Claude transcribes it and treats it as
+your request.
+
+### /avatar: a character in your video
+
+An animated avatar that follows your hand: standing on your palm, floating above it, sitting on a
+fingertip, or parked anywhere in the frame.
+
+| Option | What it does |
+|---|---|
+| Style | `solid` (a toy-like robot with a contact shadow, matched to your light and grain) or `hologram` (glowing projection with scanlines and a projector ring) |
+| Your own character | A PNG with transparency, a GIF/WebP, a video with alpha, or a green/blue-screen video (keyed automatically) |
+| Where | `palm` (default), `above`, `finger`, or `fixed` (no hand needed) |
+| Size, start/end, colours | `--size 1.3`, `--start 2 --end 9`, `--accent #FF5A5F` |
+| Summon | Open hand = it appears with a pop, fist = it vanishes |
+| Pokes | Your other index finger touching it makes it squish, then heart eyes |
+| Speech | `--say "Hi!@1.2-3.0"` bubbles; `--voice line.wav` makes it talk (mouth moves with the audio) |
+
+How it stays believable: hand landmarks from MediaPipe, smoothing that's steady when you're still and
+quick when you move (the One Euro filter), a soft contact shadow, colour and brightness matched to
+the scene, matching film grain and softness, motion blur on fast moves, and a short hold if tracking
+drops for a moment.
+
+Limits: it's 2D, so your fingers can't wrap around it and it won't change perspective if you turn
+your hand far away. The hologram style hides this best. The built-in robot is an original character;
+Claude won't recreate brand mascots or logos, but your own character file works.
+
+Want the photoreal "tiny me in my hand" look? That's made with AI video tools (Seedance, Kling, Veo,
+Runway). Claude can write the prompt for those, or you can bring an AI-made green-screen character
+back into your own footage with `/avatar`.
+
+### /reference: find examples first
+
+Searches TikTok, Instagram, YouTube, Reddit, tutorials (and GitHub for technical effects) for your
+idea. You get 3-6 references with links and credit, what makes each work, how it's made, what the
+plugin can do automatically, and what they have in common. Then it asks how you want yours (closest /
+mix / your twist), and writes the style recipe or plan. It never downloads videos from those sites;
+if you save a few references yourself, `/style-match` measures them exactly.
 
 ### /checkup: is my footage OK?
 
@@ -334,6 +431,11 @@ See the [talking video workflow](#talking-video--vlog--commentary). Useful extra
 - Transcripts mishear names, slang and game terms. Check them before captions are burned in;
   Claude fixes the words and re-runs.
 - Claude only removes what you said. It never rewords or invents speech.
+- Key words in captions are coloured automatically (numbers, scores, words you said louder,
+  caps or "!"), in about a third of the caption groups so it stays special. Name your own:
+  "highlight clutch and 1v4". Turn it off: "no coloured words".
+- Punch-ins can alternate (two-camera look) or hit the punchline (the pieces you said with the
+  most energy).
 
 ### /long-video: 5-45+ minute videos
 
@@ -412,6 +514,11 @@ hashtags, and a pinned-comment idea. It's written from what's actually in your v
 | `*_sound-ready.mp4` + `*_sound_guide.txt` | Version without the song, plus where to trim the in-app sound |
 | `post_copy.txt` | Titles, description, caption, hashtags |
 | `checkup/checkup.json` | Footage report; `*_fixed.mp4` are the safe-to-edit copies |
+| `<name>.talk.md` / `.talk.json` | What /talk heard: instructions, sounds, loud moments, transcript |
+| `<name>.highlights.json` (from /talk) | "Clip that" moments and big reactions, ready for a montage |
+| `*_avatar.mp4` + `*_check.jpg` | The avatar render and 8 frames to check its placement |
+| `*.track.json` | The hand track, reused when re-rendering the avatar |
+| `<idea>.md` (from /reference) | The reference board: links, techniques, how they're made, the plan |
 
 ---
 
@@ -530,6 +637,8 @@ Claude. Every script has `--help`.
 | `review_edit.py` | Edit coaching | `python scripts/review_edit.py my_edit.mp4 --song song.mp3` |
 | `export.py` | Platform exports | `python scripts/export.py final.mp4 --platforms tiktok youtube --res source` |
 | `layout.py` | Grid for measuring HUD / safe-zone check | `python scripts/layout.py safe final.mp4@2 --platform tiktok` |
+| `listen.py` | /talk: hear words, sounds and spoken instructions; voice notes | `python scripts/listen.py hear rec.mp4 --hotwords "Zayd, Rocket League"` |
+| `avatar.py` | /avatar: looks sheet, hand check, render | `python scripts/avatar.py render clip.mp4 --style hologram --anchor above --preview` |
 
 On macOS and Linux use `python3` instead of `python`.
 
@@ -551,6 +660,12 @@ On macOS and Linux use `python3` instead of `python`.
 | A render is very slow | Use previews while deciding, render full quality once, lower `--res`, close other heavy apps. The self-test shows what's normal for your computer |
 | "No space left on device" | Free up disk space ([Part 7](#disk-space)) and run it again. Long videos reuse sections that already finished |
 | The plugin's commands don't show up (Claude Code) | Run `/reload-plugins`, or restart Claude Code. Still missing: `/plugin` → Errors tab |
+| "No hand found" (avatar) | Open palm toward the camera, even light (not backlit), whole hand in frame, no gloves. Or place it without tracking: "put it bottom right" (`--anchor fixed`) |
+| The avatar sits beside the hand or jitters | Ask Claude to check the tracking sheet; it can switch hands (`--hand left-side`), use `above`, or change size. Very fast moves lag a frame or two |
+| The avatar looks pasted on | Try the hologram style, or more softening (`--soften 1.2`) and colour matching (`--match 0.45`) |
+| The hologram is hard to see | It's light added to the picture, so it fades on bright backgrounds like a white wall or the sky. Film against something darker, or use the solid style |
+| "clip that" wasn't picked up | Say it clearly, right after the moment, louder than the game audio. If your mic is on its own track, Claude listens to that track. Check the transcript in the .talk.md: if it misheard, tell Claude what you said |
+| The sound model / hand model couldn't download | They download once from Google (storage.googleapis.com). Check the internet connection, firewall or VPN, then try again |
 | Something else | Run `python scripts/selftest.py` and [open an issue](https://github.com/abdullahnaji353-blip/pro-editor/issues) with its output |
 
 ---
@@ -607,3 +722,8 @@ the preview, since the caption font has to include those letters.
 | **Timeline (.xml)** | Your edit as a project file you can open and change in Premiere or Resolve |
 | **Preview** | Small, fast render for checking. Not the final quality |
 | **Recipe** | A style written down as settings (pace, color, effects) |
+| **Callout** | Saying "clip that" right after a great moment, so it gets found later |
+| **Hotwords** | Names and terms given to the speech recognizer so it spells them right |
+| **Hand tracking** | Finding the 21 points of your hand in every frame, so the avatar can follow it |
+| **Contact shadow** | The soft shadow right under a character's feet that makes it look like it's standing on something |
+| **Punch-in** | A slight zoom on a cut. Alternating = every other cut; on the punchline = the high-energy parts |

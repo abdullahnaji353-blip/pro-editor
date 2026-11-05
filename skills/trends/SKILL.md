@@ -7,7 +7,7 @@ description: >
   trend for gaming (Fortnite, Rocket League, others), vlogs, travel or event videos. Researches current edit styles and
   sounds, then turns the chosen trend into a style recipe for the montage skill.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Trends

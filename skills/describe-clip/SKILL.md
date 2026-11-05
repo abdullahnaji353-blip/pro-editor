@@ -9,7 +9,7 @@ description: >
   Understands whether they want to FIND a moment in their footage, EDIT a clip the way they
   describe, or LABEL/catalog clips, and handles combinations of these.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Describe Clip

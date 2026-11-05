@@ -7,7 +7,7 @@ description: >
   Finds variable frame rate, HDR, audio-track, keyframe, loudness and clipping problems and can
   make fixed copies that are safe to edit.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Checkup

@@ -7,7 +7,7 @@ description: >
   description, caption or hashtags for a video. Reframes to each platform's size (crop or
   blurred background), burns in captions or text, checks length limits and writes post copy.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Export
