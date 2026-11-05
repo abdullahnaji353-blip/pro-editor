@@ -1,11 +1,14 @@
-"""Shared helpers for the pro-editor scripts: ffmpeg/ffprobe wrappers, JSON IO, font lookup."""
+"""Shared helpers for the pro-editor scripts: ffmpeg/ffprobe wrappers, JSON IO, model downloads, font lookup."""
 
+import contextlib
 import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.request
 from pathlib import Path
 
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".flv", ".wmv"}
@@ -113,7 +116,7 @@ def dec_args():
     return ["-hwaccel", "auto"]
 
 
-def _hw_video_args(enc, crf, preset):
+def hw_video_args(enc, crf, preset):
     fast = preset in ("ultrafast", "superfast", "veryfast", "faster", "fast")
     q = int(round(float(crf))) + 1
     if enc == "h264_nvenc":
@@ -174,7 +177,7 @@ def _swap_to_hw(args, enc):
             continue
         out.append(args[k])
         k += 1
-    hw = _hw_video_args(enc, crf, preset)
+    hw = hw_video_args(enc, crf, preset)
     if not hw:
         return None
     return out[:-1] + hw + out[-1:]  # keep the output path last
@@ -382,6 +385,74 @@ def collect_media(paths, exts):
         else:
             die(f"File not found: {p}")
     return out
+
+
+@contextlib.contextmanager
+def quiet_native_logs():
+    """Hide the log lines C++ libraries (MediaPipe, TensorFlow Lite) print straight to the stderr
+    file descriptor, ignoring Python's logging settings. Python's own messages (die(), warnings)
+    still show, and if something fails inside, the last hidden lines are printed as well."""
+    try:
+        fd = sys.stderr.fileno()
+        sys.stderr.flush()
+        saved = os.dup(fd)
+    except (OSError, ValueError, AttributeError):  # no real stderr, e.g. under a test runner
+        yield
+        return
+    python_stderr = sys.stderr
+    encoding = getattr(python_stderr, "encoding", None) or "utf-8"
+    sys.stderr = open(os.dup(saved), "w", buffering=1, encoding=encoding, errors="backslashreplace")
+    hidden = tempfile.TemporaryFile()
+    os.dup2(hidden.fileno(), fd)
+    failed = False
+    try:
+        yield
+    except Exception:
+        failed = True
+        raise
+    finally:
+        sys.stderr.close()
+        sys.stderr = python_stderr
+        os.dup2(saved, fd)
+        os.close(saved)
+        if failed:
+            hidden.seek(0)
+            tail = hidden.read().decode(errors="replace").strip().splitlines()[-8:]
+            if tail:
+                print("Library messages before the error:\n  " + "\n  ".join(tail), file=sys.stderr)
+        hidden.close()
+
+
+def get_model(name, url, env_var=None, label="AI"):
+    """Path to a small model file, downloaded once into ~/.cache/pro-editor/models.
+    env_var (if set in the environment) points at a file to use instead."""
+    if env_var and os.environ.get(env_var):
+        p = Path(os.environ[env_var]).expanduser()
+        if not p.exists():
+            die(f"{env_var} points at {p}, which doesn't exist.")
+        return str(p)
+    dst = Path.home() / ".cache" / "pro-editor" / "models" / name
+    if dst.exists() and dst.stat().st_size > 10000:
+        return str(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_suffix(dst.suffix + ".part")
+    print(f"Downloading the {label} model once ({name}) ...")
+    try:
+        with urllib.request.urlopen(url, timeout=60) as r, open(tmp, "wb") as f:
+            shutil.copyfileobj(r, f)
+        if tmp.stat().st_size < 10000:
+            raise OSError("download was too small")
+        tmp.replace(dst)
+    except Exception as e:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        die(
+            f"Couldn't download the {label} model ({type(e).__name__}). Check the internet connection, or "
+            f"download it yourself from\n  {url}\nand save it as\n  {dst}"
+        )
+    return str(dst)
 
 
 def find_font():
