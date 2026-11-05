@@ -541,7 +541,12 @@ def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None, look=No
             "-preset",
             "veryfast" if preview else "medium",
             "-crf",
-            "20" if preview else "17",
+            "20" if preview else "18",
+            # grain and fine texture can balloon the file: cap it near what social apps re-encode to
+            "-maxrate",
+            "6M" if preview else ("16M" if max(W, H) > 2000 else "10M"),
+            "-bufsize",
+            "20M",
             "-r",
             str(fps),
             "-pix_fmt",

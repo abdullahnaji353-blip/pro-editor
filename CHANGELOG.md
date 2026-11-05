@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.1
+
+- `/create` caps the bitrate (10 Mbps at 1080p) so film grain no longer makes 600 MB files.
+
 ## 0.16.0
 
 - `/create` stops looking AI-made: six looks (editorial, news, hype, minimal, tech, pop), each a
