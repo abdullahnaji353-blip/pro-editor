@@ -10,8 +10,8 @@
     {
       "name": "pro-editor",
       "source": "./",
-      "description": "Make Claude a professional editor. Gaming edits, vlogs and travel videos: listens to your footage and follows what you said while filming, hand-tracked avatars and holograms, reference research, beat-synced montages with velocity ramps and effects, jump cuts and edit-by-transcript for talking videos, word-by-word captions, face-tracking vertical crops, voice cleanup, find any moment by describing it, trend research, style matching, edit coaching, long YouTube videos with chapters, thumbnails, color grades saved as LUTs, and exports up to 4K for TikTok, Shorts, Reels and YouTube plus Premiere/Resolve timelines.",
-      "version": "0.11.0",
+      "description": "Make Claude a professional editor. Beat-synced gaming montages, vlog jump cuts and word-by-word captions, ranked Shorts from long videos, videos made from scratch with /create, a hand-tracked avatar, and edits that follow what you said while filming. Exports up to 4K for TikTok, Reels, Shorts and YouTube, plus Premiere and Resolve timelines.",
+      "version": "0.11.1",
       "license": "MIT",
       "keywords": [
         "video",

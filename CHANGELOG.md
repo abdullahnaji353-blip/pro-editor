@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.1
+
+- Fixes installing in the Claude app: the plugin description is under 500 characters and no skill
+  description contains tag-like text. Tests now check both on every push.
+
 ## 0.11.0
 
 - `/create` makes any kind of video, not just explainers: hype intros, kinetic typography, promos,

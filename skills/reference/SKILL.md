@@ -3,7 +3,7 @@ name: reference
 description: >
   This skill should be used when the user invokes /reference, or asks "find me references", "find
   examples of edits like this", "how do people make this effect", "show me videos that do X",
-  "what does a good <type> edit look like", "search TikTok/Instagram/YouTube for this style",
+  "what does a good Fortnite or travel edit look like", "search TikTok/Instagram/YouTube for this style",
   "I want something like ___ but I don't have examples". Searches the web (TikTok, Instagram,
   YouTube, Reddit, tutorials, GitHub) for references that match the user's idea, works out how
   they're made and what they have in common, asks how the user wants theirs, and turns the pick
