@@ -45,6 +45,14 @@
       const L = n.getTotalLength(); n.style.strokeDasharray = L;
       n.style.strokeDashoffset = L * (1 - K.p(t, start, dur, ease.inOut));
     },
+    // music: window.BEATS / DOWNBEATS / DROPS hold this scene's beat times (seconds from its start)
+    beat(t, decay = 0.22, list = window.BEATS || []) {   // 1 on each beat, fading to 0
+      let last = -1e9; for (const b of list) { if (b <= t) last = b; else break; }
+      return Math.exp(-(t - last) / decay);
+    },
+    bar: (t, decay = 0.35) => K.beat(t, decay, window.DOWNBEATS || []),
+    drop: (t, decay = 0.6) => K.beat(t, decay, window.DROPS || []),
+    count_beats: (t) => (window.BEATS || []).filter((b) => b <= t).length,  // beats so far: word-per-beat text
     zoom(x, t, d, from = 1.0, to = 1.06) {    // slow push-in across the whole scene
       const n = el(x); if (!n) return;
       n.style.transform = `scale(${K.lerp(from, to, clamp(t / d))})`;

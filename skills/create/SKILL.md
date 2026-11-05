@@ -2,20 +2,32 @@
 name: create
 description: >
   This skill should be used when the user invokes /create, or asks to "make a video about X",
-  "create an explainer", "make an informative video", "animated video from this article / topic /
-  data", "faceless video", "make a video with AI", "motion graphics", "a video like the ones made
-  with Claude", or wants a video made from scratch rather than edited from their footage. Researches
-  the topic, writes the script, codes each scene as an animation, adds a voiceover, music and
-  captions, checks the frames, and renders it.
+  "make a hype intro", "kinetic typography", "lyric video", "promo / ad for my product", "channel
+  intro or outro", "animated meme", "make an explainer", "faceless video", "make a video with AI",
+  "motion graphics", "a video like the ones made with Claude", or wants any video made from scratch
+  rather than edited from their footage. Plans it, codes each scene as an animation (synced to the
+  music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
+  and renders it.
 metadata:
-  version: "0.10.0"
+  version: "0.11.0"
 ---
 
 # Create
 
-Videos made from scratch with code: every frame is drawn from a timestamp, so text, numbers,
-charts and diagrams stay sharp and exact (AI video generators still mangle text). Typical output:
-a 20-90 s vertical explainer, a 1-3 min YouTube explainer, a data story, a trailer for an article.
+Any video made from scratch with code: every frame is drawn from a timestamp, so text, numbers,
+shapes and timing are exact (AI video generators still mangle text). Anything goes:
+
+| Kind | What makes it work |
+|---|---|
+| Hype intro, kinetic typography | one or two words per beat, hard cuts on bars, pulses and flashes on the beat, big type |
+| Lyric video | each line on screen as it's sung (time lines to the song), the key word coloured |
+| Promo / ad | the problem in one line, the product doing its thing, one benefit per scene, a clear ending |
+| Channel intro / outro | 3-6 s, logo or name reveal on the drop, subscribe / next-video slot |
+| Meme, joke, reaction | setup, beat of silence, punchline big; timing is everything |
+| Story | a character or object that changes across scenes, narration carrying it |
+| Explainer, facts, data | hook in 2 s, one idea per scene, numbers counting up, sources at the end |
+
+Not sure which kind they want? Ask once, with two or three of these as options.
 
 ## Locate the scripts
 
@@ -28,22 +40,27 @@ install chromium`) and ffmpeg. Check with `python3 $S/check_setup.py`; ask befor
 Topic, who it's for, length, format (9:16 for TikTok/Reels/Shorts, 16:9 for YouTube), voice or
 text-only, and any look they want. Default: 9:16, 30-45 s, voiceover, captions, dark clean style.
 
-## 2. Research before writing (informative = accurate)
+## 2. Research only when it's needed
 
-Search the web for the facts, numbers and dates. Every number on screen needs a source you found
-this session; never invent statistics or quotes. Keep the sources for the end card or the post
-description. If the user gave an article, data or a transcript, work from that.
+Facts, numbers, dates, or a real product or person on screen: search the web first. Every number
+needs a source you found this session; never invent statistics or quotes. For a hype edit, a meme
+or a story there's nothing to research: go straight to the plan. Looking up the current trend for
+that kind of video (`/trends`, `/reference`) is worth it when the user wants it to feel current.
 
-## 3. Script and storyboard
+## 3. Plan the scenes
 
-Write `project.json` in a work folder (format: `python3 $S/create.py -h`). Rules that make these
-videos work:
+Write `project.json` in a work folder (format: `python3 $S/create.py -h`). For every kind:
 
-- **Hook in the first 2 seconds**: a surprising claim, a question, a number. No "In this video".
-- **One idea per scene**, 3-8 s each, narration of 8-25 words. On screen: at most ~10 words, big.
-  The screen shows the key word, number or diagram; the voice explains it.
-- **Show, don't list**: count numbers up, grow bars, draw lines and arrows, move things.
-- **Payoff at the end**, then a short end card (sources, or a call to action).
+- **Hook in the first 1-2 seconds**: motion, a bold word, a question. Never a slow fade from black.
+- **One thing per scene**, big and readable on a phone: at most ~10 words on screen at once.
+- **Move with purpose**: things arrive, hit, count, grow, draw, then leave. Nothing just sits.
+- **End on purpose**: a payoff, a punchline, a logo hit or a call to action.
+- Narration is optional: a hype intro or a lyric video usually has none (`"narration"` omitted).
+
+With a song, add `"music": "song.mp3"` and `"sync": "bars"` (or `"beats"` for faster cutting):
+scene ends snap to the music, and every scene gets its own beat times. Animate on them with
+`K.beat(t)` (1 on each beat, fading), `K.bar(t)` (each bar), `K.drop(t)` (the drop) and
+`K.count_beats(t)` (how many beats so far: one word per beat).
 
 ## 4. Code the scenes
 

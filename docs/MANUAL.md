@@ -329,12 +329,17 @@ back into your own footage with `/avatar`.
 
 ### /create: a video from scratch
 
-For explainers, facts, data stories and trailers: no footage needed. Claude researches the topic,
-writes a script with one idea per scene, and codes each scene as an animation (titles, counting
-numbers, growing bars, drawn lines). A hidden browser records every frame, so text and numbers stay
-sharp. Your computer reads the narration (on a Mac it uses the same voices as `say`), music ducks
-under it, and captions follow the words.
+For anything you don't have footage for: hype intros, kinetic typography, promos, lyric videos, memes,
+explainers, data stories, trailers. With a song, scene cuts land on the bars and the animation hits
+the beats (`"sync": "bars"`). When facts are involved, Claude researches them first.
 
+Claude plans one idea per scene and codes each scene as an animation (words slamming in on the beat,
+counting numbers, growing bars, drawn lines). A hidden browser records every frame, so text and
+timing stay exact. If there's narration, your computer reads it (on a Mac, the same voices as
+`say`), music ducks under it, and captions follow the words.
+
+> "/create a 6-second hype intro for my channel, synced to intro.mp3"
+>
 > "/create a 40-second TikTok about why the Roman Empire fell, dark style, deep male voice"
 
 Before the slow render Claude checks a sheet of still frames from every scene and fixes anything

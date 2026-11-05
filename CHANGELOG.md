@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0
+
+- `/create` makes any kind of video, not just explainers: hype intros, kinetic typography, promos,
+  lyric videos, channel intros, memes and stories, each with its own plan in the skill. Research
+  happens only when facts are on screen.
+- Music sync for `/create`: `"sync": "bars"` or `"beats"` snaps scene cuts to the song, and every
+  scene gets its beat times (`K.beat`, `K.bar`, `K.drop`, `K.count_beats` in the kit).
+
 ## 0.10.0
 
 **New**

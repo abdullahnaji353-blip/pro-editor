@@ -143,6 +143,11 @@ def cmd_voice(a):
             s.pop("audio_duration", None)
             s["duration"] = round(scene_duration({**s, "duration": None}), 3)
     pj.setdefault("voice", {})["engine"] = engine
+    if pj.get("sync") in ("beats", "bars"):
+        if snap_durations(pj, song_beats(base, pj)):
+            print(f"Scenes snapped to the music's {pj['sync']}")
+        else:
+            print('sync needs "music" in the project; scenes keep their own timing')
     save_json(pj, path)
     total = sum(s["duration"] for s in pj["scenes"])
     print(f"Voice: {engine}" + (f" ({voice})" if voice else "") + f", {made} line(s) recorded")
@@ -153,12 +158,68 @@ def cmd_voice(a):
         print("  (no voice engine: scenes are timed for reading. On a Mac `say` works out of the box.)")
 
 
+# ------------------------------------------------------------------ music sync
+def song_beats(base, pj):
+    """Beats of the project's music, cached next to the project."""
+    music = pj.get("music")
+    if not music:
+        return None
+    cache = base / ".render" / "beats.json"
+    src = (base / music).resolve()
+    if cache.exists():
+        b = load_json(cache)
+        if b.get("song") == str(src):
+            return b
+    from beats import analyze
+
+    b = analyze(src)
+    b["song"] = str(src)
+    cache.parent.mkdir(exist_ok=True)
+    save_json(b, cache)
+    return b
+
+
+def snap_durations(pj, beats):
+    """End every scene on a beat (sync: beats) or a bar start (sync: bars), never cutting it much short."""
+    mode = pj.get("sync")
+    if mode not in ("beats", "bars") or not beats:
+        return False
+    grid = beats["downbeats"] if mode == "bars" and len(beats.get("downbeats", [])) > 2 else beats["beats"]
+    t = 0.0
+    for s in pj["scenes"]:
+        want = t + scene_duration(s)
+        floor = t + max(0.8, scene_duration(s) * 0.85)  # don't cut the narration or the animation short
+        ok = [g for g in grid if g >= floor]
+        end = min(ok, key=lambda g: abs(g - want)) if ok else want
+        s["duration"] = round(end - t, 3)
+        t = end
+    return True
+
+
+def scene_beats(pj, beats, durs):
+    """Beat, downbeat and drop times relative to each scene's start."""
+    out, t = [], 0.0
+    for d in durs:
+        out.append(
+            {
+                k: [round(x - t, 3) for x in (beats or {}).get(k, []) if t <= x < t + d]
+                for k in ("beats", "downbeats", "drops")
+            }
+        )
+        t += d
+    return out
+
+
 # ------------------------------------------------------------------ drawing
-def open_scene(page, base, scene, W, H):
+def open_scene(page, base, scene, W, H, beat_info=None):
     page.goto((base / scene["html"]).resolve().as_uri())
     page.add_style_tag(path=str(KIT / "kit.css"))
     page.add_script_tag(path=str(KIT / "kit.js"))
     page.evaluate(f"document.body.classList.add('{'v' if H > W else 'h'}')")
+    page.evaluate(
+        "(b) => { window.BEATS = b.beats; window.DOWNBEATS = b.downbeats; window.DROPS = b.drops; }",
+        beat_info or {"beats": [], "downbeats": [], "drops": []},
+    )
     # scenes may load the kit themselves; if render is defined inline it runs after the kit is present
     page.evaluate("document.fonts.ready")
     if not page.evaluate("typeof window.render === 'function'"):
@@ -181,9 +242,10 @@ def cmd_sheet(a):
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=tw / W)
-        for s in pj["scenes"]:
+        per = scene_beats(pj, song_beats(base, pj), [scene_duration(x) for x in pj["scenes"]])
+        for s, bi in zip(pj["scenes"], per):
             d = scene_duration(s)
-            open_scene(page, base, s, W, H)
+            open_scene(page, base, s, W, H, bi)
             tiles = []
             for t in (min(0.5, d / 4), d / 2, max(0, d - 0.3)):
                 draw(page, t, d)
@@ -203,10 +265,10 @@ def cmd_sheet(a):
     print(f"Sheet -> {out}  ({len(rows)} scenes, 3 stills each)")
 
 
-def render_scene(page, base, s, W, H, fps, dst, preview):
+def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None):
     d = scene_duration(s)
     n = max(1, round(d * fps))
-    open_scene(page, base, s, W, H)
+    open_scene(page, base, s, W, H, beat_info)
     tmp = dst.with_name(dst.stem + ".part.mp4")
     ow, oh = (W // 2 // 2 * 2, H // 2 // 2 * 2) if preview else (W, H)
     ff = subprocess.Popen(
@@ -352,13 +414,14 @@ def cmd_render(a):
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         page = browser.new_page(viewport={"width": W, "height": H})
-        for s in scenes:
+        per = scene_beats(pj, song_beats(base, pj), [round(scene_duration(x) * fps) / fps for x in scenes])
+        for s, bi in zip(scenes, per):
             dst = work / f"{s['id']}{'_p' if a.preview else ''}.mp4"
             if a.only and s["id"] != a.only and dst.exists():
                 durs.append(round(scene_duration(s) * fps) / fps)
             else:
                 print(f"  drawing {s['id']} ({scene_duration(s):.1f}s)")
-                durs.append(render_scene(page, base, s, W, H, fps, dst, a.preview))
+                durs.append(render_scene(page, base, s, W, H, fps, dst, a.preview, bi))
             files.append(dst)
         browser.close()
     total = sum(durs)
