@@ -1,0 +1,5 @@
+# Optional features. Install only what you need.
+faster-whisper>=1.1          # transcripts: /vlog-edit, /talk, captions, chapters
+opencv-python-headless<5     # face tracking (vertical crop) and /avatar
+pillow>=9                    # /avatar speech bubbles
+mediapipe>=0.10.14           # /avatar hand tracking, /talk sound recognition

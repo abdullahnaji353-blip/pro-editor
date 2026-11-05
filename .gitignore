@@ -11,3 +11,5 @@ Thumbs.db
 montage-lab/
 sections/
 exports/
+.pytest_cache/
+.ruff_cache/

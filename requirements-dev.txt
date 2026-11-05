@@ -1,0 +1,5 @@
+-r requirements.txt
+opencv-python-headless<5
+pillow>=9
+pytest>=8
+ruff==0.17.3
