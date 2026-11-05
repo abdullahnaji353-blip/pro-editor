@@ -13,7 +13,7 @@ ok = True
 system = platform.system()
 print(f"System: {system}, Python {sys.version.split()[0]}")
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036 - this runs on old Pythons to say "please upgrade"
     ok = False
     print("MISSING  Python 3.9 or newer")
 
@@ -34,8 +34,10 @@ for mod in ("numpy", "librosa", "soundfile"):
 
 print("\nOptional (only for some features):")
 for mod, why, pkg in (
-    ("faster_whisper", "transcripts, jump cuts on fillers, word captions", "faster-whisper"),
-    ("cv2", "face-tracking vertical crop", '"opencv-python-headless<5"'),
+    ("faster_whisper", "transcripts, /talk, jump cuts on fillers, word captions", "faster-whisper"),
+    ("cv2", "face-tracking vertical crop and the avatar", '"opencv-python-headless<5"'),
+    ("mediapipe", "the avatar's hand tracking and /talk's sound recognition (laughs, cheers...)", "mediapipe"),
+    ("PIL", "the avatar's speech bubbles", "pillow"),
 ):
     try:
         m = importlib.import_module(mod)

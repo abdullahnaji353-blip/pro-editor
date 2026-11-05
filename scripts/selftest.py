@@ -96,7 +96,7 @@ def make_media(d):
         }
         for k, w in enumerate(txt.split())
     ]
-    segs = [(0.5, 2.5, "hey welcome back"), (3.5, 5.5, "um today we test"), (7.0, 9.0, "and that is it")]
+    segs = [(0.5, 2.5, "hey welcome back"), (3.5, 5.5, "um today we test"), (7.0, 9.0, "oh clip that")]
     json.dump(
         {
             "segments": [
@@ -242,7 +242,34 @@ if __name__ == "__main__":
         ),
         ("thumbnail", [py, f"{S}/thumbnail.py", "make", "clip1.mp4@2", "--text", "test", "--out", "t.jpg"]),
         ("safe zones", [py, f"{S}/layout.py", "safe", "m.mp4@1", "--out", "safe.png"]),
+        (
+            "/talk (spoken commands)",
+            [py, f"{S}/listen.py", "hear", "talk.mp4", "--transcript", "talk.json", "--no-sounds", "--out-dir", "talk"],
+        ),
     ]
+    if importlib.util.find_spec("cv2"):
+        tests.append(
+            (
+                "avatar (fixed spot, no tracking)",
+                [
+                    py,
+                    f"{S}/avatar.py",
+                    "render",
+                    "clip1.mp4",
+                    "--anchor",
+                    "fixed",
+                    "--pos",
+                    "0.5,0.85",
+                    "--end",
+                    "3",
+                    "--preview",
+                    "--say",
+                    "hi!@1-2.5",
+                    "--out",
+                    "av.mp4",
+                ],
+            )
+        )
     for name, cmd in tests:
         t0 = time.time()
         ok, tail = sh(cmd, d)
@@ -294,6 +321,52 @@ if __name__ == "__main__":
             print(f"  {'PASS' if ok else 'FAIL'}  face detection" + ("" if ok else ": " + FIX["cv2"]))
         except ImportError:
             print("  SKIP  face detection: not installed. " + FIX["cv2"])
+        if importlib.util.find_spec("mediapipe"):
+            from common import get_model
+
+            for name, url, env, label in [
+                (
+                    "hand_landmarker.task",
+                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
+                    "hand_landmarker/float16/latest/hand_landmarker.task",
+                    "PRO_EDITOR_HAND_MODEL",
+                    "hand tracking",
+                ),
+                (
+                    "yamnet.tflite",
+                    "https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/"
+                    "float32/latest/yamnet.tflite",
+                    "PRO_EDITOR_YAMNET_MODEL",
+                    "sound recognition",
+                ),
+            ]:
+                t0 = time.time()
+                try:
+                    get_model(name, url, env, label)
+                    ok, tail = (
+                        sh(
+                            [
+                                py,
+                                f"{S}/listen.py",
+                                "hear",
+                                "talk.mp4",
+                                "--transcript",
+                                "talk.json",
+                                "--out-dir",
+                                "talk2",
+                            ],
+                            d,
+                        )
+                        if name == "yamnet.tflite"
+                        else (True, [])
+                    )
+                    results.append((label, ok, time.time() - t0, tail))
+                    print(f"  {'PASS' if ok else 'FAIL'}  {label + ' model':42s} {time.time() - t0:5.1f}s")
+                except SystemExit:
+                    results.append((label, False, time.time() - t0, []))
+                    print(f"  FAIL  {label} model couldn't download: check the internet connection and run again.")
+        else:
+            print("  SKIP  avatar hand tracking and /talk sounds: python -m pip install mediapipe")
 
     # speed check: how long renders take on THIS computer
     from common import ffmpeg as ff_render
