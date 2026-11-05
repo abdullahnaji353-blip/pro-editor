@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.13.0
+
+- `check_render.py`: checks a render before Claude shows it: loudness and true peak, the level of
+  each section, clicks at cuts, black, frozen and silent stretches, and a strip of frames with the
+  waveform around every cut. `--window` gives a strip of any moment. Every editing skill runs it,
+  fixes what it finds (three rounds at most), and publishable work also gets a critic pass from a
+  second Claude.
+- Rules from your notes: lasting notes are saved to `pro-editor-rules.md` in your footage folder
+  and every command follows them.
+- `--model groq` for transcripts: Groq's hosted Whisper large-v3, free and fast; only with your OK
+  because the audio is uploaded.
+- Ideas from [video-use](https://github.com/browser-use/video-use) and
+  [free247editor](https://github.com/riecodes/free247editor) (both MIT).
+
 ## 0.12.0
 
 - AI voiceover for `/create`: generate the whole script as one take with the ElevenLabs connector

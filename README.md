@@ -28,12 +28,14 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
   synced to your song, promos, lyric videos, memes, explainers with a researched script. AI
   voiceover (ElevenLabs) or your computer's voices, an animated presenter that lip-syncs to it,
   AI or real clips inside scenes, music and captions.
+- Checks its own work before showing you: loudness, clicks at cuts, black or frozen frames, with
+  frame strips around every cut. Lasting notes become rules it follows on every future edit.
 - Exports for TikTok, Reels, Shorts and YouTube up to 4K, plus timelines for Premiere Pro and
   DaVinci Resolve and colour grades as `.cube` LUTs.
 
 ![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
-> Early version (0.12). Every tool is tested on generated test videos, but not much on real
+> Early version (0.13). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
 > Bug reports are very welcome.
 
@@ -182,6 +184,13 @@ python scripts/selftest.py               # end-to-end run on generated clips
 
 Found a bug or have an idea? [Open an issue](https://github.com/abdullahnaji353-blip/pro-editor/issues)
 with what you asked Claude, what happened, and the output of `python scripts/check_setup.py`.
+
+## Credits
+
+Ideas borrowed, with thanks, from two MIT-licensed projects: the render self-check, cut-boundary
+frame strips and critic pass from [video-use](https://github.com/browser-use/video-use) by Browser
+Use, and rules learned from your notes and free Groq transcription from
+[free247editor](https://github.com/riecodes/free247editor) by riecodes. The code here is our own.
 
 ## License
 

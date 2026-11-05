@@ -136,6 +136,18 @@ Rendering takes time, so every edit goes:
 
 Want to skip the preview? Say "just render it full quality".
 
+Before showing you a preview, Claude checks it with `check_render.py`: loudness and true peak,
+each section's level, a click at any cut, black or frozen stretches, plus a strip of frames and the
+waveform around every cut. It fixes what it finds (three rounds at most) and tells you what's left.
+For something you'll publish, a second Claude reviews it with fresh eyes and lists the top fixes.
+
+### It learns your style
+
+When a note is lasting ("always put captions up top", "never use the glitch effect", or the same
+kind of note twice), Claude saves it as a rule in `pro-editor-rules.md` in your footage folder and
+says so in one line. Every command reads that file first, so you don't repeat yourself. Open or
+edit it any time.
+
 ### Your files are safe
 
 - Your original footage is **never changed**. Fixes and edits are always written as new files.
@@ -145,7 +157,11 @@ Want to skip the preview? Say "just render it full quality".
 ### Tell Claude when it's wrong
 
 Highlight picks, face tracking and transcripts are educated guesses. Claude says when something is
-a guess and asks you to check it. You know your footage: "not that one, the goal at 3:20" is all it needs.
+a guess and asks you to check it.
+
+Transcripts run on your computer by default. On a slow laptop, `--model groq` uses Groq's hosted
+Whisper large-v3 instead (free key from console.groq.com in `GROQ_API_KEY`): much faster, but the
+audio is uploaded to Groq, so Claude only uses it if you say yes. You know your footage: "not that one, the goal at 3:20" is all it needs.
 
 ---
 

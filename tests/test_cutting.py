@@ -58,3 +58,16 @@ def test_montage_cuts_follow_the_song():
     assert set(gaps(24, 46)) == {1.0}  # loud: the recipe's every 2 beats
     flat = cut_points(data, 48.0, 2, True, 1.0, drops=[16.0], adaptive=False)
     assert max(y - x for x, y in zip(flat[1:], flat[2:-1])) <= 1.0  # old behaviour: same spacing throughout
+
+
+def test_render_check_hears_a_click_at_a_cut():
+    import numpy as np
+
+    from check_render import pop_at
+
+    sr = 8000
+    t = np.arange(sr * 2) / sr
+    x = (0.1 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+    assert pop_at(x, sr, 1.0) < 6  # smooth audio: no click
+    x[sr : sr + 8] = 0.9  # a hard edge, like an unfaded cut
+    assert pop_at(x, sr, 1.0) > 12

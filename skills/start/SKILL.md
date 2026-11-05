@@ -7,7 +7,7 @@ description: >
   pro-editor plugin: checks the setup and the footage, works out what kind of edit the user wants,
   and routes to the right skills in the right order.
 metadata:
-  version: "0.8.0"
+  version: "0.13.0"
 ---
 
 # Start
@@ -71,3 +71,10 @@ cut them to the beat of your song, and give you a quick preview first"), then go
 - When something is a guess (highlights, trends, face tracking, transcripts), say so and ask the
   user to check it. They know their footage.
 - If they're learning to edit, offer `/edit-review` on their own versions; don't push it.
+
+## Their rules
+
+Edits learn the user's taste: lasting notes are saved as rules in `pro-editor-rules.md` in their
+footage folder (one line each, their words and the date) and every command reads them first. If
+the file exists, say in one line how many rules you're applying. If they ask to see or change their
+rules, open that file with them.

@@ -10,7 +10,7 @@ description: >
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # Create
@@ -126,3 +126,19 @@ generate short clips for the scenes that need them (scenery, objects, an establi
 lay them in with `K.clip`, with the text and the host on top. Ask which tool if they named none,
 and use none they ruled out. Never generate realistic footage of a real person: for a video about
 someone, use places, objects, graphics and their own words, not a synthetic face.
+
+## Every edit: your rules, then a check before you show it
+
+- **Their rules first.** Read `pro-editor-rules.md` in the footage folder if it exists; its rules
+  beat this skill's defaults. When a note is lasting (it says always or never, it's about their
+  style, or the same kind of note comes twice), add it there as one line with their own words and
+  the date, and confirm in one line: "Saved as a rule: ...". One-off notes stay one-off.
+- **Check the render before showing it**: `python3 $S/check_render.py <video> --out-dir <work>/check`
+  (pass `--cuts` when you know them). Read `report.md` and look at `cuts.png`: clicks at cuts,
+  a section 10+ dB quieter than the rest, black or frozen stretches, a cut on the wrong frame.
+  Fix and re-check, at most 3 rounds, then tell the user what's left instead of looping. You can't
+  hear it: report the measured loudness, never "it sounds good".
+- **Something they'll publish** (a launch, an ad, a channel trailer): before calling it done, spawn
+  one critic sub-agent with the video's check report, frame strips and the plan, briefed to roast
+  it: a verdict, problems ranked with timestamps, and the five fixes to make first. Fresh eyes
+  catch the cut-off punchline and the 28 px text you stopped seeing.

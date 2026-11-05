@@ -58,7 +58,11 @@ def transcribe(
 ):
     """Word-level transcript. Tuned against Whisper's known failure modes: voice-activity filtering so
     silence and music don't turn into invented sentences, no feeding of previous text (stops repetition
-    loops), skipping hallucinated text inside long silences, and hotwords for names and game terms."""
+    loops), skipping hallucinated text inside long silences, and hotwords for names and game terms.
+    model="groq" sends the audio to Groq's hosted whisper-large-v3 instead (free key, GROQ_API_KEY):
+    much faster than a CPU, but the audio leaves the computer, so only when the user chose it."""
+    if model == "groq":
+        return transcribe_groq(video, language, track, prompt or (hotwords and f"Names: {hotwords}."), quiet)
     try:
         from faster_whisper import WhisperModel
     except ImportError:
@@ -112,6 +116,78 @@ def transcribe(
         "model": model,
         "segments": out,
     }
+
+
+def _multipart(fields, file_field, filename, data):
+    import uuid
+
+    b = uuid.uuid4().hex
+    out = []
+    for k, v in fields:
+        out.append(f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
+    out.append(
+        f'--{b}\r\nContent-Disposition: form-data; name="{file_field}"; filename="{filename}"\r\n'
+        "Content-Type: audio/mpeg\r\n\r\n".encode()
+    )
+    out += [data, f"\r\n--{b}--\r\n".encode()]
+    return b"".join(out), f"multipart/form-data; boundary={b}"
+
+
+def groq_words(segs_json, offset):
+    """Groq verbose_json -> our segments, words placed in the segment they fall in."""
+    words = [
+        {"w": w["word"].strip(), "start": round(w["start"] + offset, 3), "end": round(w["end"] + offset, 3), "p": 1.0}
+        for w in segs_json.get("words") or []
+        if w.get("word", "").strip()
+    ]
+    out = []
+    for s in segs_json.get("segments") or []:
+        a, b = s["start"] + offset, s["end"] + offset
+        ws = [w for w in words if a - 0.05 <= (w["start"] + w["end"]) / 2 < b + 0.05]
+        out.append({"start": round(a, 3), "end": round(b, 3), "text": s["text"].strip(), "words": ws})
+    return out
+
+
+def transcribe_groq(video, language=None, track=0, prompt=None, quiet=False, chunk=1200):
+    import json
+    import os
+    import urllib.request
+
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        die("--model groq needs GROQ_API_KEY (free at console.groq.com/keys). Or use the local model.")
+    dur = probe(video)["duration"]
+    segs, lang = [], language
+    with tempfile.TemporaryDirectory() as td:
+        for k, start in enumerate(range(0, max(1, int(dur + 0.999)), chunk)):
+            mp3 = Path(td) / f"c{k}.mp3"
+            ffmpeg(["-ss", str(start), "-t", str(chunk), "-i", str(video), "-map", f"0:a:{track}", "-vn",
+                    "-ac", "1", "-ar", "16000", "-b:a", "64k", str(mp3)])  # fmt: skip
+            fields = [("model", "whisper-large-v3"), ("response_format", "verbose_json"),
+                      ("timestamp_granularities[]", "word"), ("timestamp_granularities[]", "segment")]  # fmt: skip
+            if language:
+                fields.append(("language", language))
+            if prompt:
+                fields.append(("prompt", prompt))
+            body, ctype = _multipart(fields, "file", "audio.mp3", mp3.read_bytes())
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                data=body,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": ctype, "User-Agent": "pro-editor"},
+            )
+            if not quiet:
+                print(f"  Groq: {start // 60:.0f}-{min(dur, start + chunk) / 60:.0f} min ...")
+            try:
+                with urllib.request.urlopen(req, timeout=300) as r:
+                    j = json.loads(r.read())
+            except Exception as e:  # noqa: BLE001
+                die(f"Groq transcription failed: {e}")
+            lang = lang or j.get("language")
+            segs += groq_words(j, start)
+    for i, s in enumerate(segs, 1):
+        s["id"] = i
+    return {"video": str(Path(video).resolve()), "language": lang or "en", "language_probability": 1.0,
+            "model": "groq:whisper-large-v3", "segments": segs}  # fmt: skip
 
 
 # ------------------------------------------------------------------ script (edit by text)

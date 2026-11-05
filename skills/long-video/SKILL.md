@@ -7,7 +7,7 @@ description: >
   sections (beat-synced montage parts and raw gameplay parts with their own audio), joins them
   with transitions, normalizes loudness, and writes YouTube chapters.
 metadata:
-  version: "0.8.0"
+  version: "0.13.0"
 ---
 
 # Long Video
@@ -72,3 +72,19 @@ python3 $S/stitch.py <work>/project.json --preview --out <work>/preview.mp4 --wo
   description with the chapters, tags) from `/export`.
 - For talking parts without titled sections, chapters come from the transcript instead: see
   step 8 of `/vlog-edit` (`chapters.py`).
+
+## Every edit: your rules, then a check before you show it
+
+- **Their rules first.** Read `pro-editor-rules.md` in the footage folder if it exists; its rules
+  beat this skill's defaults. When a note is lasting (it says always or never, it's about their
+  style, or the same kind of note comes twice), add it there as one line with their own words and
+  the date, and confirm in one line: "Saved as a rule: ...". One-off notes stay one-off.
+- **Check the render before showing it**: `python3 $S/check_render.py <video> --out-dir <work>/check`
+  (pass `--cuts` when you know them). Read `report.md` and look at `cuts.png`: clicks at cuts,
+  a section 10+ dB quieter than the rest, black or frozen stretches, a cut on the wrong frame.
+  Fix and re-check, at most 3 rounds, then tell the user what's left instead of looping. You can't
+  hear it: report the measured loudness, never "it sounds good".
+- **Something they'll publish** (a launch, an ad, a channel trailer): before calling it done, spawn
+  one critic sub-agent with the video's check report, frame strips and the plan, briefed to roast
+  it: a verdict, problems ranked with timestamps, and the five fixes to make first. Fresh eyes
+  catch the cut-off punchline and the 28 px text you stopped seeing.

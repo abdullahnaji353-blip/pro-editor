@@ -8,7 +8,7 @@ description: >
   self-contained moments, ranks them by hook, energy, ending and pace, reads them to judge the
   content, then renders vertical clips with face tracking and word-by-word captions.
 metadata:
-  version: "0.9.0"
+  version: "0.13.0"
 ---
 
 # Shorts
@@ -62,3 +62,22 @@ re-run with a narrower `--min/--max`.
 Offer `/export` for platform versions, titles and hashtags, and `/thumbnail` for a cover. Say
 plainly what the score can't judge: whether a joke is funny, or whether a clip needs context the
 viewer won't have.
+
+## Every edit: your rules, then a check before you show it
+
+- **Their rules first.** Read `pro-editor-rules.md` in the footage folder if it exists; its rules
+  beat this skill's defaults. When a note is lasting (it says always or never, it's about their
+  style, or the same kind of note comes twice), add it there as one line with their own words and
+  the date, and confirm in one line: "Saved as a rule: ...". One-off notes stay one-off.
+- **Check the render before showing it**: `python3 $S/check_render.py <video> --out-dir <work>/check`
+  (pass `--cuts` when you know them). Read `report.md` and look at `cuts.png`: clicks at cuts,
+  a section 10+ dB quieter than the rest, black or frozen stretches, a cut on the wrong frame.
+  Fix and re-check, at most 3 rounds, then tell the user what's left instead of looping. You can't
+  hear it: report the measured loudness, never "it sounds good".
+- **Something they'll publish** (a launch, an ad, a channel trailer): before calling it done, spawn
+  one critic sub-agent with the video's check report, frame strips and the plan, briefed to roast
+  it: a verdict, problems ranked with timestamps, and the five fixes to make first. Fresh eyes
+  catch the cut-off punchline and the 28 px text you stopped seeing.
+- **Faster transcripts**: `--model groq` sends the audio to Groq's hosted Whisper large-v3 (free
+  key from console.groq.com, `GROQ_API_KEY`). Minutes instead of an hour on a slow laptop, but the
+  audio leaves their computer, so offer it and use it only if they say yes.

@@ -7,7 +7,7 @@ description: >
   off-beat cuts with exact timestamps and frame offsets, dead spots, hook, ending, loudness,
   and how it compares to a target style.
 metadata:
-  version: "0.8.0"
+  version: "0.13.0"
 ---
 
 # Edit Review
@@ -62,3 +62,11 @@ say that too without inventing problems.
 
 Only explain the theory (why cutting on the snare feels better, what a J-cut is, how speed ramps
 work) when the user asks. Default to the short, actionable version.
+
+## Technical pass
+
+Also run `python3 $S/check_render.py <video> --out-dir <work>/check` and fold its findings in:
+clicks at cuts, true peak above -1 dBTP, loudness far from -14 LUFS, sections 10+ dB quieter than
+the rest, black or frozen stretches. `--window START END` gives a frame strip with the waveform for
+any moment you want to look at closely. Lead with a verdict, then problems ranked with timestamps,
+then the five fixes to make first: honest, not polite.
