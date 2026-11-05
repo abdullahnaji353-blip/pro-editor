@@ -1,20 +1,24 @@
 """Talking-video editing: transcripts, automatic jump cuts, and editing by deleting text.
 
 Commands:
-  transcribe VIDEO [--model small] [--language en] [--audio-track N] [--out transcript.json]
-      Word-level transcript with timestamps (faster-whisper; first run downloads the model).
+  transcribe VIDEO [--model auto] [--language en] [--hotwords "Naji, Rocket League"] [--multilingual]
+             [--audio-track N] [--out transcript.json]
+      Word-level transcript with timestamps (faster-whisper; first run downloads the model). auto =
+      large-v3-turbo on an NVIDIA GPU, small on a CPU. --hotwords helps it spell names, slang and
+      game terms. --multilingual for speakers who switch languages mid-sentence.
   script VIDEO TRANSCRIPT [--out script.txt]
       One numbered line per sentence. Delete a line (or start it with #) to cut it. Lines that look
       like a retake of a later line are flagged, so the bad take is easy to spot.
   cut VIDEO [--transcript T] [--script EDITED.txt] [--no-silences] [--fillers]
             [--min-silence 0.45] [--pad 0.12] [--noise auto|-38] [--audio-track N] [--out cut.mp4] [--preview]
-            [--punch-in 1.12] [--punch-center 0.5]
+            [--punch-in 1.12] [--punch-center 0.5] [--remove "12.3-14.0,..." | --remove-file talk.json]
       Removes silences (and filler words / deleted script lines when given), renders with tiny audio
       fades so cuts don't click, and writes cut.map.json (old->new times, for captions) and cut.xml
       (the same edit as a Premiere/Resolve timeline, video + audio).
       --punch-in zooms every other piece in (e.g. 1.12 = 12%), the YouTube trick that makes jump
       cuts feel deliberate instead of glitchy. --punch-center sets where it zooms (0 = left, 1 = right
-      of the frame, e.g. where the face is).
+      of the frame, e.g. where the face is). --punch-mode emphasis zooms the pieces said with the most
+      energy instead (punch in on the punchline), never two in a row.
 """
 
 import argparse
@@ -34,17 +38,60 @@ def norm_word(w):
 
 
 # ------------------------------------------------------------------ transcribe
-def transcribe(video, model="small", language=None, track=0):
+def pick_model(model):
+    """'auto' = large-v3-turbo on an NVIDIA GPU (fast and accurate), small on a CPU."""
+    device, compute = "cpu", "int8"
+    try:
+        import ctranslate2
+
+        if ctranslate2.get_cuda_device_count() > 0:
+            device, compute = "cuda", "int8_float16"
+    except Exception:
+        pass
+    if model in (None, "auto"):
+        model = "large-v3-turbo" if device == "cuda" else "small"
+    return model, device, compute
+
+
+def transcribe(
+    video, model="auto", language=None, track=0, hotwords=None, prompt=None, multilingual=False, quiet=False
+):
+    """Word-level transcript. Tuned against Whisper's known failure modes: voice-activity filtering so
+    silence and music don't turn into invented sentences, no feeding of previous text (stops repetition
+    loops), skipping hallucinated text inside long silences, and hotwords for names and game terms."""
     try:
         from faster_whisper import WhisperModel
     except ImportError:
         die("Transcripts need faster-whisper:  python -m pip install faster-whisper")
+    import inspect
+
+    model, device, compute = pick_model(model)
     with tempfile.TemporaryDirectory() as td:
         wav = Path(td) / "a.wav"
         ffmpeg(["-i", str(video), "-map", f"0:a:{track}", "-vn", "-ac", "1", "-ar", "16000", str(wav)])
-        print(f"Loading the '{model}' speech model (first run downloads it) ...")
-        m = WhisperModel(model, device="auto", compute_type="int8")
-        segs, info = m.transcribe(str(wav), language=language, word_timestamps=True, vad_filter=True)
+        print(f"Loading the '{model}' speech model on the {device.upper()} (first run downloads it) ...")
+        try:
+            m = WhisperModel(model, device=device, compute_type=compute)
+        except Exception:
+            if device == "cpu":
+                raise
+            print("  (GPU speech model failed to load; using the CPU)")
+            model, device, compute = pick_model("small" if model == "large-v3-turbo" else model)[0], "cpu", "int8"
+            m = WhisperModel(model, device="cpu", compute_type="int8")
+        opts = dict(
+            language=language,
+            word_timestamps=True,
+            vad_filter=True,
+            condition_on_previous_text=False,
+            hallucination_silence_threshold=2.0,
+            beam_size=5,
+            hotwords=hotwords or None,
+            initial_prompt=prompt or None,
+            multilingual=multilingual,
+        )
+        allowed = set(inspect.signature(m.transcribe).parameters)
+        opts = {k: v for k, v in opts.items() if k in allowed and (v is not None or k == "language")}
+        segs, info = m.transcribe(str(wav), **opts)
         out = []
         for i, s in enumerate(segs, 1):
             words = [
@@ -54,9 +101,17 @@ def transcribe(video, model="small", language=None, track=0):
             out.append(
                 {"id": i, "start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip(), "words": words}
             )
-            print(f"  [{i:04d}] {s.start:7.2f}s  {s.text.strip()[:70]}", end="\r")
-    print()
-    return {"video": str(Path(video).resolve()), "language": info.language, "segments": out}
+            if not quiet:
+                print(f"  [{i:04d}] {s.start:7.2f}s  {s.text.strip()[:70]}", end="\r")
+    if not quiet:
+        print()
+    return {
+        "video": str(Path(video).resolve()),
+        "language": info.language,
+        "language_probability": round(getattr(info, "language_probability", 0) or 0, 3),
+        "model": model,
+        "segments": out,
+    }
 
 
 # ------------------------------------------------------------------ script (edit by text)
@@ -195,6 +250,23 @@ def plan_cut(video, info, a, tr=None):
                 before = sum(y - x for x, y in keep)
                 keep = subtract(keep, (s2, e2))
                 removed["silence"] += before - sum(y - x for x, y in keep)
+    extra = []
+    if getattr(a, "remove", None):
+        for part in a.remove.split(","):
+            try:
+                x, y = [float(v) for v in part.strip().split("-")]
+                extra.append((x, y))
+            except ValueError:
+                die(f"--remove takes START-END pairs in seconds, got '{part}'")
+    if getattr(a, "remove_file", None):
+        data = load_json(a.remove_file)
+        rng = data.get("edit", {}).get("remove", []) if isinstance(data, dict) else data
+        extra += [
+            (float(r["start"]), float(r["end"])) if isinstance(r, dict) else (float(r[0]), float(r[1])) for r in rng
+        ]
+    for x, y in extra:
+        keep = subtract(keep, (x, y))
+    removed["ranges"] = len(extra)
     if a.fillers and tr:
         for s in tr["segments"]:
             for w in s["words"]:
@@ -216,7 +288,53 @@ def merge(ranges, gap):
 
 
 # ------------------------------------------------------------------ render
-def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
+def punch_set(video, keep, track, mode):
+    """Which pieces get the punch-in: every other one, or the ones said with the most energy."""
+    if mode != "emphasis":
+        return {k for k in range(len(keep)) if k % 2 == 1}
+    res = subprocess.run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(video),
+            "-map",
+            f"0:a:{track}",
+            "-ac",
+            "1",
+            "-ar",
+            "8000",
+            "-f",
+            "f32le",
+            "-",
+        ],
+        capture_output=True,
+    )
+    import numpy as np
+
+    x = np.frombuffer(res.stdout, np.float32)
+    if not len(x) or len(keep) < 3:
+        return {k for k in range(len(keep)) if k % 2 == 1}
+    db = []
+    for s, e in keep:
+        seg = x[int(s * 8000) : int(e * 8000)]
+        db.append(10 * np.log10(np.mean(seg**2) + 1e-10) if len(seg) else -100)
+    thr = np.percentile(db, 65)
+    chosen = {k for k, d in enumerate(db) if d >= thr}
+    # never zoom two pieces in a row: it reads as one long zoomed shot
+    out, prev = set(), False
+    for k in range(len(keep)):
+        if k in chosen and not prev:
+            out.add(k)
+            prev = True
+        else:
+            prev = False
+    return out
+
+
+def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5, punch_mode="alternate"):
     fps = int(round(info["fps"] or 30))
     W, H = info["width"], info["height"]
     if preview:
@@ -224,6 +342,7 @@ def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
     # snap to frames so audio and video pieces are exactly the same length
     keep = [(round(s * fps) / fps, round(e * fps) / fps) for s, e in keep]
     keep = [(s, e) for s, e in keep if e - s >= 1 / fps]
+    punched = punch_set(video, keep, track, punch_mode) if punch > 1 else set()
     with tempfile.TemporaryDirectory() as td:
 
         def one(k):
@@ -232,7 +351,7 @@ def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
             D = n / fps
             v, aw = Path(td) / f"v{k:05d}.mp4", Path(td) / f"a{k:05d}.wav"
             look = f"scale={W}:{H}"
-            if punch > 1 and k % 2 == 1:
+            if punch > 1 and k in punched:
                 zw, zh = int(W * punch) // 2 * 2, int(H * punch) // 2 * 2
                 cx = min(max(punch_center, 0.0), 1.0)
                 look = f"scale={zw}:{zh},crop={W}:{H}:(iw-{W})*{cx:.3f}:(ih-{H})/2"
@@ -308,10 +427,10 @@ def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
             ]
         enc = ["-preset", "veryfast", "-crf", "26"] if preview else ["-preset", "medium", "-crf", "18"]
         ffmpeg([*args, "-c:v", "libx264", *enc, "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], hw=True)
-    return keep, fps
+    return keep, fps, punched
 
 
-def write_outputs(video, info, keep, fps, out, punch=0.0):
+def write_outputs(video, info, keep, fps, out, punch=0.0, punched=None):
     from xml_timeline import write_xmeml
 
     segs, t = [], 0
@@ -326,7 +445,9 @@ def write_outputs(video, info, keep, fps, out, punch=0.0):
                 "source": str(Path(video).resolve()),
                 "src_in": s,
                 "speed": 1.0,
-                "effects": [f"punch-in {int(round((punch - 1) * 100))}%"] if punch > 1 and i % 2 == 1 else [],
+                "effects": [f"punch-in {int(round((punch - 1) * 100))}%"]
+                if punch > 1 and i in (punched if punched is not None else {j for j in range(len(keep)) if j % 2})
+                else [],
             }
         )
         mapping.append({"src_start": round(s, 4), "src_end": round(e, 4), "out_start": round(t / fps, 4)})
@@ -352,9 +473,12 @@ if __name__ == "__main__":
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("transcribe")
     p.add_argument("video")
-    p.add_argument("--model", default="small")
+    p.add_argument("--model", default="auto")
     p.add_argument("--language")
     p.add_argument("--audio-track", type=int, default=0)
+    p.add_argument("--hotwords", help='names and terms it should expect, e.g. "Naji, Rocket League, flip reset"')
+    p.add_argument("--prompt", help="a sentence of context in the speaker's style (helps spelling and punctuation)")
+    p.add_argument("--multilingual", action="store_true", help="speaker switches languages (e.g. Arabic + English)")
     p.add_argument("--out", default="transcript.json")
     p = sub.add_parser("script")
     p.add_argument("video")
@@ -373,12 +497,20 @@ if __name__ == "__main__":
     p.add_argument("--out", default="cut.mp4")
     p.add_argument("--preview", action="store_true")
     p.add_argument("--lufs", type=float, default=-14.0)
+    p.add_argument("--remove", help='extra time ranges to cut, e.g. "12.3-14.0,55.1-57.9"')
+    p.add_argument("--remove-file", help="JSON with ranges to cut (the edit.remove list that listen.py writes)")
     p.add_argument("--punch-in", type=float, default=0.0, help="zoom every other piece, e.g. 1.12")
     p.add_argument("--punch-center", type=float, default=0.5, help="where to zoom: 0 left .. 1 right")
+    p.add_argument(
+        "--punch-mode",
+        choices=["alternate", "emphasis"],
+        default="alternate",
+        help="alternate = every other piece (two-camera look); emphasis = the pieces said with the most energy",
+    )
     a = ap.parse_args()
 
     if a.cmd == "transcribe":
-        tr = transcribe(a.video, a.model, a.language, a.audio_track)
+        tr = transcribe(a.video, a.model, a.language, a.audio_track, a.hotwords, a.prompt, a.multilingual)
         save_json(tr, a.out)
         print(f"{len(tr['segments'])} lines ({tr['language']}) -> {a.out}")
     elif a.cmd == "script":
@@ -392,14 +524,16 @@ if __name__ == "__main__":
         keep, removed = plan_cut(a.video, info, a, tr)
         if not keep:
             die("Everything would be cut. Check --noise / --min-silence or the script.")
-        keep, fps = render(a.video, info, keep, a.out, a.audio_track, a.preview, a.punch_in, a.punch_center)
-        new_len = write_outputs(a.video, info, keep, fps, a.out, a.punch_in)
+        keep, fps, punched = render(
+            a.video, info, keep, a.out, a.audio_track, a.preview, a.punch_in, a.punch_center, a.punch_mode
+        )
+        new_len = write_outputs(a.video, info, keep, fps, a.out, a.punch_in, punched)
         if info["has_audio"] and a.lufs:
             normalize_loudness(a.out, a.lufs)
         print(
             f"{info['duration']:.1f}s -> {new_len:.1f}s ({len(keep)} pieces, "
             f"{info['duration'] - new_len:.1f}s removed: silences {removed['silence']:.1f}s, "
-            f"fillers {removed['fillers']}, deleted lines {removed['lines']})"
+            f"fillers {removed['fillers']}, deleted lines {removed['lines']}, ranges {removed.get('ranges', 0)})"
         )
         print(
             f"Done -> {a.out}  (+ {Path(a.out).with_suffix('.map.json').name}, {Path(a.out).with_suffix('.xml').name})"
