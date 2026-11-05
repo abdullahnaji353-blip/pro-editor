@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+- New icon and a redesigned README: a banner, a "how it works" diagram, and images for `/talk` and
+  `/avatar`. Designed in Figma.
+- CI uses the Node 24 releases of the checkout and setup-python actions.
+
 ## 0.8.0
 
 **New**

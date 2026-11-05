@@ -1,6 +1,6 @@
 {
   "name": "pro-editor",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Make Claude a professional editor. Gaming edits, vlogs and travel videos: listens to your footage and follows what you said while filming, hand-tracked avatars and holograms, reference research, beat-synced montages with velocity ramps and effects, jump cuts and edit-by-transcript for talking videos, word-by-word captions, face-tracking vertical crops, voice cleanup, find any moment by describing it, trend research, style matching, edit coaching, long YouTube videos with chapters, thumbnails, color grades saved as LUTs, and exports up to 4K for TikTok, Shorts, Reels and YouTube plus Premiere/Resolve timelines.",
   "author": {
     "name": "Naji"

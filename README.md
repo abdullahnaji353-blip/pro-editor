@@ -1,16 +1,12 @@
-# pro-editor
+![pro-editor: make Claude a professional editor. Gaming edits, vlogs and travel videos, cut by Claude on your own computer.](docs/images/banner.png)
 
 [![CI](https://github.com/abdullahnaji353-blip/pro-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/abdullahnaji353-blip/pro-editor/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-Make Claude a professional editor.
 
 pro-editor is a Claude plugin for editing gaming clips, vlogs, and travel or event videos, from
 10-second TikToks to 45-minute YouTube videos. You describe the edit the way you'd describe it to a
 person ("cut my clips to this song", "remove the ums and add captions") and Claude does it with
 ffmpeg and Python on your own computer, showing you a quick preview before the final render.
-
-![The built-in avatar, solid and hologram styles](docs/images/avatar.png)
 
 ## What it does
 
@@ -27,6 +23,8 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 - `/reference`: finds real examples of the edit you have in mind and works out how they're made.
 - Exports for TikTok, Reels, Shorts and YouTube up to 4K, plus timelines for Premiere Pro and
   DaVinci Resolve and colour grades as `.cube` LUTs.
+
+![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
 > Early version (0.8). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
@@ -115,6 +113,8 @@ up as `/pro-editor:start`, `/pro-editor:montage` and so on.
 
 ## Talking to it while you film
 
+![You say "clip that", "Claude, zoom in here" and "scratch that" while filming; /talk turns them into a highlight, a zoom and a cut](docs/images/talk.png)
+
 Say these while recording, then run `/talk` on the video:
 
 | Say | What happens |
@@ -131,15 +131,9 @@ makes the cut cleaner.
 
 Each command is a skill: instructions that tell Claude how an editor would approach the job (what
 to ask, what to check, when to show a preview). Skills call small Python scripts that do the work
-with ffmpeg, and every script can also be run on its own:
+with ffmpeg, and every script can also be run on its own.
 
-```
-"cut my clips to this song"
-  └─ /montage skill: plans the edit, asks what's missing, checks the result
-       ├─ beats.py          tempo, beats and drops in the song
-       ├─ highlights.py     where the action is in your clips
-       └─ build_montage.py  cuts, effects, grade and audio mix → preview → final MP4 + timeline
-```
+![How a request becomes an edit: you ask, the /montage skill plans it, beats.py, highlights.py and build_montage.py do the work on your computer, and you get a preview, the final MP4 and a Premiere/Resolve timeline](docs/images/how-it-works.png)
 
 Everything runs where Claude runs commands: on your computer in Claude Code or the desktop app with
 a connected folder, or in a cloud session on files you attach. Your footage is never uploaded by the
