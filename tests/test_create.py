@@ -83,3 +83,27 @@ def test_audio_mix_numbers_every_voice_line_and_the_music(tmp_path, monkeypatch)
     graph = seen["cmd"][seen["cmd"].index("-filter_complex") + 1]
     assert "[0:a]" in graph and "[1:a]" in graph and "[2:a]" in graph and "[3:a]" in graph
     assert "[4:a]" not in graph
+
+
+def test_in_scene_captions_split_words_by_scene():
+    from create import in_scene_captions, scene_captions
+
+    pj = {"captions": True, "look": "editorial", "scenes": [{"id": "a", "narration": "one two three"},
+                                                            {"id": "b", "narration": "four five"}]}  # fmt: skip
+    assert in_scene_captions(pj)
+    assert not in_scene_captions({**pj, "caption_mode": "burn"}) and not in_scene_captions({**pj, "look": None})
+    caps = scene_captions(pj, [3.0, 3.0])
+    assert [w["w"] for w in caps["a"]] == ["one", "two", "three"] and [w["w"] for w in caps["b"]] == ["four", "five"]
+    assert all(0 <= w["start"] < 3 for c in caps.values() for w in c)
+
+
+def test_kit_ships_its_fonts_and_three():
+    from pathlib import Path
+
+    kit = Path(__file__).resolve().parents[1] / "scripts" / "create_kit"
+    css = (kit / "looks.css").read_text()
+    import re
+
+    for f in re.findall(r'url\("fonts/([^"]+)"\)', css):
+        assert (kit / "fonts" / f).exists(), f
+    assert (kit / "vendor" / "three.cjs").exists() and (kit / "fonts" / "OFL.txt").exists()

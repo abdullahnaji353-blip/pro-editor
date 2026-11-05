@@ -1,0 +1,106 @@
+/* pro-editor /create looks. Set "look" in project.json (or <body data-look="...">).
+   Each look is a full design decision: type pairing, palette, texture, how things move.
+   Fonts are bundled (SIL OFL, see fonts/OFL.txt), so renders never fall back to Arial. */
+@font-face { font-family: "Anton"; src: url("fonts/anton-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Archivo Black"; src: url("fonts/archivo-black-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Bebas Neue"; src: url("fonts/bebas-neue-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "DM Serif Display"; src: url("fonts/dm-serif-display-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "DM Serif Display"; font-style: italic; src: url("fonts/dm-serif-display-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Serif"; src: url("fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Serif"; font-style: italic; src: url("fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Inter Tight"; font-weight: 400; src: url("fonts/inter-tight-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter Tight"; font-weight: 500; src: url("fonts/inter-tight-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter Tight"; font-weight: 700; src: url("fonts/inter-tight-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter Tight"; font-weight: 800; src: url("fonts/inter-tight-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter Tight"; font-weight: 900; src: url("fonts/inter-tight-latin-900-normal.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 700; src: url("fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-weight: 500; src: url("fonts/space-grotesk-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-weight: 700; src: url("fonts/space-grotesk-latin-700-normal.woff2") format("woff2"); }
+
+/* shared building blocks every look styles its own way */
+.display { font-family: var(--display); font-weight: var(--display-weight, 400); line-height: var(--display-lh, .92);
+  letter-spacing: var(--display-track, -0.02em); text-transform: var(--display-case, none); }
+.label { font: 500 30px/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.rule { height: 3px; background: var(--text); transform-origin: left center; }
+.mark { background-image: linear-gradient(var(--marker, var(--accent-2)), var(--marker, var(--accent-2)));
+  background-repeat: no-repeat; background-position: 0 88%; background-size: 0% 38%; padding: 0 .08em; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; }
+#k-texture { position: absolute; inset: -64px; pointer-events: none; z-index: 50; opacity: var(--grain, 0);
+  mix-blend-mode: var(--grain-blend, soft-light); background-size: 256px 256px; }
+#k-vignette { position: absolute; inset: 0; pointer-events: none; z-index: 49;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, var(--vignette, transparent) 100%); }
+
+/* editorial: magazine / documentary. Paper, a big serif, one red, thin rules. */
+body[data-look="editorial"] {
+  --bg: #efe9df; --panel: #e6dfd2; --line: #1b1a17; --text: #1b1a17; --muted: #6d675d;
+  --accent: #c8321f; --accent-2: #f2c94c; --marker: #f2c94c;
+  --font: "Inter Tight", sans-serif; --display: "Instrument Serif", serif; --display-lh: .9;
+  --display-track: -0.025em; --mono: "JetBrains Mono", monospace; --grain: .22; 
+  --vignette: rgba(80, 60, 30, .12);
+}
+/* news: broadcast package. Navy, heavy grotesk, red tags, ticking mono. */
+body[data-look="news"] {
+  --bg: #0b1424; --panel: #13213a; --line: #2a3a58; --text: #ffffff; --muted: #9fb0c8;
+  --accent: #e5262b; --accent-2: #ffffff; --marker: #e5262b;
+  --font: "Inter Tight", sans-serif; --display: "Inter Tight", sans-serif; --display-weight: 900;
+  --display-lh: .9; --display-track: -0.035em; --mono: "JetBrains Mono", monospace; --grain: .2;
+  --vignette: rgba(0, 0, 0, .55);
+}
+/* hype: condensed caps, black and acid, built to slam on beats. */
+body[data-look="hype"] {
+  --bg: #0a0a0a; --panel: #161616; --line: #2a2a2a; --text: #f4f4f0; --muted: #8b8b85;
+  --accent: #d7ff1f; --accent-2: #ff3b30; --marker: #d7ff1f;
+  --font: "Inter Tight", sans-serif; --display: "Anton", sans-serif; --display-case: uppercase;
+  --display-lh: .86; --display-track: 0; --mono: "JetBrains Mono", monospace; --grain: .3;
+  --vignette: rgba(0, 0, 0, .6);
+}
+/* minimal: white, black, one blue. Swiss and calm. */
+body[data-look="minimal"] {
+  --bg: #fafafa; --panel: #f0f0f0; --line: #111; --text: #111; --muted: #777;
+  --accent: #2448ff; --accent-2: #ffe14d; --marker: #ffe14d;
+  --font: "Inter Tight", sans-serif; --display: "Inter Tight", sans-serif; --display-weight: 800;
+  --display-lh: .92; --display-track: -0.045em; --mono: "JetBrains Mono", monospace; --grain: .12;
+  
+}
+/* tech: dev / product content. Charcoal, mono labels, one signal orange. */
+body[data-look="tech"] {
+  --bg: #111214; --panel: #1a1c1f; --line: #2c2f34; --text: #ececec; --muted: #8a8f98;
+  --accent: #ff6a1a; --accent-2: #9df27a; --marker: #ff6a1a;
+  --font: "Space Grotesk", sans-serif; --display: "Space Grotesk", sans-serif; --display-weight: 700;
+  --display-lh: .95; --display-track: -0.035em; --mono: "JetBrains Mono", monospace; --grain: .18;
+  --vignette: rgba(0, 0, 0, .5);
+}
+/* pop: loud colour blocks that change per scene, chunky type. Gen Z social. */
+body[data-look="pop"] {
+  --bg: #ff4fa3; --panel: #ffffff; --line: #111; --text: #111; --muted: #3a3a3a;
+  --accent: #111; --accent-2: #fff04d; --marker: #fff04d;
+  --font: "Inter Tight", sans-serif; --display: "Archivo Black", sans-serif; --display-lh: .9;
+  --display-track: -0.03em; --mono: "JetBrains Mono", monospace; --grain: .15; 
+}
+body[data-look] { background: var(--bg); color: var(--text); font-family: var(--font); }
+body[data-look] .title { font-family: var(--display); font-weight: var(--display-weight, 400);
+  letter-spacing: var(--display-track); line-height: var(--display-lh); text-transform: var(--display-case, none); }
+body[data-look] .big { font-family: var(--display); font-weight: var(--display-weight, 400); }
+body[data-look] .kicker { font-family: var(--mono); }
+body[data-look] .card { border-radius: 6px; }
+
+/* in-scene captions (create.py "captions": true with a look) */
+#k-cap { position: absolute; left: 50%; top: 68%; z-index: 40; max-width: 88%; text-align: center;
+  font: 800 76px/1.08 var(--font); letter-spacing: -0.02em; color: var(--text); white-space: nowrap; }
+body.h #k-cap { top: auto; bottom: 9%; font-size: 58px; }
+#k-cap span { display: inline-block; padding: 0 .1em; border-radius: .12em; }
+body[data-look="editorial"] #k-cap { color: #1b1a17; }
+body[data-look="editorial"] #k-cap .on { background: var(--accent-2); }
+body[data-look="news"] #k-cap { text-transform: uppercase; font-weight: 900; text-shadow: 0 4px 18px rgba(0,0,0,.5); }
+body[data-look="news"] #k-cap .on { background: var(--accent); }
+body[data-look="hype"] #k-cap { font: 400 104px/1 var(--display); text-transform: uppercase; text-shadow: 0 6px 24px #000; }
+body[data-look="hype"] #k-cap .on { color: var(--accent); }
+body[data-look="minimal"] #k-cap .on { color: var(--accent); }
+body[data-look="tech"] #k-cap { font: 700 66px/1.1 var(--mono); }
+body[data-look="tech"] #k-cap .on { color: #111214; background: var(--accent); }
+body[data-look="pop"] #k-cap { font: 400 82px/1.05 var(--display); color: #fff; -webkit-text-stroke: 10px #111; paint-order: stroke fill; }
+body[data-look="pop"] #k-cap .on { color: var(--accent-2); }
+@font-face { font-family: "Press Start 2P"; src: url("fonts/press-start-2p-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Bangers"; src: url("fonts/bangers-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cabin Sketch"; font-weight: 700; src: url("fonts/cabin-sketch-latin-700-normal.woff2") format("woff2"); }

@@ -4,13 +4,13 @@ description: >
   This skill should be used when the user invokes /create, or asks to "make a video about X",
   "make a hype intro", "kinetic typography", "lyric video", "promo / ad for my product", "channel
   intro or outro", "animated meme", "make an explainer", "faceless video", "make a video with AI",
-  "motion graphics", "a video like the ones made with Claude", "AI voiceover", "add an AI presenter", "sound effects",
+  "motion graphics", "a video like the ones made with Claude", "AI voiceover", "add an AI presenter", "sound effects", "animation styles", "pixel art", "Lego", "3D animation",
   "use AI clips", or wants any video made from scratch
   rather than edited from their footage. Plans it, codes each scene as an animation (synced to the
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.15.0"
+  version: "0.16.0"
 ---
 
 # Create
@@ -63,7 +63,38 @@ scene ends snap to the music, and every scene gets its own beat times. Animate o
 `K.beat(t)` (1 on each beat, fading), `K.bar(t)` (each bar), `K.drop(t)` (the drop) and
 `K.count_beats(t)` (how many beats so far: one word per beat).
 
-## 4. Code the scenes
+## 4. Pick a look before writing a scene
+
+The fastest way to make a video look AI-made: dark background, neon glow, one system font, emoji,
+cards with rounded corners, everything centred and sliding up the same way. Avoid all of it.
+Choose a **look** (`"look"` in project.json) that fits the subject, or an **art style** for
+illustrated videos:
+
+| Look | Feels like | Good for |
+|---|---|---|
+| `editorial` | a magazine feature: paper, big serif, one red, thin rules | explainers, profiles, history, news stories |
+| `news` | a broadcast package: navy, heavy grotesk, red tags | breaking news, results, sports |
+| `hype` | condensed caps, black and acid yellow, slams | gaming intros, drops, sports hype |
+| `minimal` | Swiss: white, black, one blue | product, tech, finance |
+| `tech` | charcoal, mono labels, signal orange | dev and AI content |
+| `pop` | loud colour blocks, chunky type | Gen Z social, memes, lists |
+
+Fonts are bundled (Instrument Serif, Inter Tight, Anton, Archivo Black, JetBrains Mono, Space
+Grotesk, Press Start 2P, Bangers, Cabin Sketch), so renders never fall back to Arial, and the
+renderer warns if a font fails to load. With a look, captions are drawn inside the scene in its
+own type (`"caption_mode": "burn"` for the old burned-in style).
+
+**Art styles** (illustration, same subject drawn many ways, like the "10 animation styles" trend):
+- 2D with `ART` (art.js): `pixel` (low-res, scanlines), `chalk` (chalkboard, wobbly strokes),
+  `glow` (neon sketch on black), `comic` (ink outlines, halftone, bursts), `flat` (flat vector),
+  `line` (minimal white line art on a night sky). Draw shapes once with roles (`"hero"`, `"dark"`,
+  `"ground"`, `"glass"`...) and the style decides the rendering: `const A = ART.canvas("#c",
+  "comic"); A.begin(t); A.shape(ART.rect(...), "hero"); A.text(...); A.end(t);`
+- 3D with `K3` (three.js, bundled): `K3.stage("ps2" | "lego" | "cgi" | "toon")`, then
+  `K3.car`, `K3.block` (studded bricks in lego), `K3.city`, `K3.ground`, `K3.orbit(S, t, d)` for
+  the camera, `S.draw()`. Build objects on the first `render()` call.
+
+## 5. Code the scenes
 
 One HTML file per scene. It defines `window.render = (t, d) => {...}` and sets everything from `t`
 (seconds into the scene, `d` = its length). The kit (`$S/create_kit/kit.css`, `kit.js`) is loaded
@@ -88,7 +119,7 @@ Never use CSS animations, timers or `requestAnimationFrame`: the renderer calls 
 frame. Only touch `K` inside `render`. Vertical video: keep text out of the bottom ~18% (the app's
 buttons and captions live there); the kit's `.stage` already does.
 
-## 5. Voice, check, render
+## 6. Voice, check, render
 
 ```
 python3 $S/create.py voice  <work>/project.json        # voiceover + scene timing
@@ -123,7 +154,7 @@ python3 $S/create.py render <work>/project.json        # full quality
 - Music: `"music": "song.mp3"` ducks under the voice automatically; loudness ends at -14 LUFS.
   `"captions": true` burns word-by-word captions from the narration.
 
-## 6. Finish
+## 7. Finish
 
 Show the video, list the sources, and offer `/export` (platform sizes, title, hashtags) and
 `/thumbnail`. Be clear about what it is: motion graphics, with an AI voice or AI clips if used.

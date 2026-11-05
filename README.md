@@ -24,7 +24,9 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 - `/reference`: finds real examples of the edit you have in mind and works out how they're made.
 - `/shorts`: turns a long stream, podcast or talking video into ranked vertical clips with captions,
   cut on whole sentences and framed on your face.
-- `/create`: makes any video from scratch, drawn with code: hype intros and kinetic typography
+- `/create`: makes any video from scratch, drawn with code, in a real design language (editorial,
+  news, hype, minimal, tech, pop) or an art style (pixel, chalkboard, glow sketch, comic, flat
+  vector, line art, or 3D: PS2, Lego, CGI, toon): hype intros and kinetic typography
   synced to your song, promos, lyric videos, memes, explainers with a researched script. AI
   voiceover (ElevenLabs, or free Kokoro on your computer), an animated presenter that lip-syncs to it,
   AI or real clips inside scenes, music and captions.
@@ -37,7 +39,7 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 
 ![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
-> Early version (0.15). Every tool is tested on generated test videos, but not much on real
+> Early version (0.16). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
 > Bug reports are very welcome.
 

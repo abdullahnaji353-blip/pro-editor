@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.16.0
+
+- `/create` stops looking AI-made: six looks (editorial, news, hype, minimal, tech, pop), each a
+  real type pairing, palette and texture, with nine bundled open-licence fonts and a check that
+  every font actually loaded.
+- New motion: word-by-word reveals, mask wipes, highlighter sweeps, slams, shakes, a drifting
+  camera, steady counters, plus film grain and vignette.
+- Captions drawn inside the scene in the look's own type instead of burned-in Arial.
+- Art styles: pixel, chalkboard, glow sketch, comic, flat vector and line art in 2D (`ART`), and
+  PS2, Lego, CGI and toon in 3D on bundled three.js (`K3`).
+- Fixes scenes that used the kit at the top level of their script (it now loads first).
+
 ## 0.15.0
 
 - Sound effects that land, in three layers: `sfx.py spot` watches an edit for the moments that

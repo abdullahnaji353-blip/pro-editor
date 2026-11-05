@@ -17,6 +17,7 @@ Commands
 
 PROJECT.json
   {"title": "...", "size": "1080x1920", "fps": 30,
+   "look": "editorial | news | hype | minimal | tech | pop",
    "music": "song.mp3", "music_volume": 0.18, "captions": true, "sfx": true, "sfx_volume": 0.22,
    "voice": {"engine": "auto", "voice": null}, "voiceover": null,
    "scenes": [{"id": "01-hook", "html": "scenes/01-hook.html", "narration": "...", "min_duration": 2.5}]}
@@ -412,11 +413,28 @@ def scene_beats(pj, beats, durs):
 
 
 # ------------------------------------------------------------------ drawing
-def open_scene(page, base, scene, W, H, beat_info=None, fps=30):
+def scene_page(browser, W, H, scale=1):
+    """A browser page where the kit (and three.js for K3 scenes) loads before each scene's own script,
+    so scenes can use K, ART and K3 at the top level as well as inside render()."""
+    page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=scale)
+    for f in ("kit.js", "host.js", "art.js"):
+        page.add_init_script(path=str(KIT / f))
+    src = (KIT / "vendor" / "three.cjs").read_text(encoding="utf-8")
+    page.add_init_script(
+        f"(function(){{var module={{exports:{{}}}},exports=module.exports;\n{src}\nwindow.THREE=module.exports;}})();"
+    )
+    page.add_init_script(path=str(KIT / "three3d.js"))
+    return page
+
+
+def open_scene(page, base, scene, W, H, beat_info=None, fps=30, look=None, caps=None):
     page.goto((base / scene["html"]).resolve().as_uri())
     page.add_style_tag(path=str(KIT / "kit.css"))
-    page.add_script_tag(path=str(KIT / "kit.js"))
-    page.add_script_tag(path=str(KIT / "host.js"))
+    looks = (KIT / "looks.css").read_text(encoding="utf-8").replace('url("fonts/', f'url("{(KIT / "fonts").as_uri()}/')
+    page.add_style_tag(content=looks)
+    if look and not page.evaluate("document.body.dataset.look"):
+        page.evaluate("(l) => { document.body.dataset.look = l; }", look)
+    page.evaluate("(c) => { window.CAPS = c; window.__capGroups = null; }", caps)
     amp = amp_envelope(base / scene["audio"], fps) if scene.get("audio") else None
     page.evaluate(f"(a) => {{ window.AMP = a; window.AMP_FPS = {fps}; }}", amp)
     page.evaluate(f"document.body.classList.add('{'v' if H > W else 'h'}')")
@@ -426,14 +444,35 @@ def open_scene(page, base, scene, W, H, beat_info=None, fps=30):
     )
     # scenes may load the kit themselves; if render is defined inline it runs after the kit is present
     page.evaluate("document.fonts.ready")
+    # fonts fail silently (the video ships in a fallback face): load every face in use and check
+    missing = page.evaluate(
+        """async () => {
+          const fams = new Set();
+          for (const n of document.querySelectorAll('body *')) {
+            const f = getComputedStyle(n).fontFamily.split(',')[0].replace(/["']/g, '').trim();
+            if (f) fams.add(f);
+          }
+          const bad = [];
+          for (const f of fams) {
+            const decl = [...document.fonts].some((ff) => ff.family.replace(/["']/g, '') === f);
+            if (!decl) continue;
+            try { await document.fonts.load(`40px "${f}"`); } catch (e) {}
+            if (!document.fonts.check(`40px "${f}"`)) bad.push(f);
+          }
+          return bad;
+        }"""
+    )
+    if missing:
+        print(f"  warning: {scene['id']}: font(s) didn't load: {', '.join(missing)}")
     if not page.evaluate("typeof window.render === 'function'"):
         die(f"{scene['html']} doesn't define window.render = (t, d) => {{...}}")
 
 
 def draw(page, t, d):
-    # waits for any K.clip video to land on its frame
+    # waits for any K.clip video to land on its frame; K.__post adds grain/vignette for the look
     page.evaluate(
         f"(async () => {{ window.__pending = []; window.render({t:.5f}, {d:.5f});"
+        f" if (window.K && K.__post) {{ K.__post({t:.5f}); K.__captions({t:.5f}); }}"
         " if (window.__pending.length) await Promise.all(window.__pending); })()"
     )
 
@@ -449,11 +488,13 @@ def cmd_sheet(a):
     rows = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=tw / W)
-        per = scene_beats(pj, song_beats(base, pj), [scene_duration(x) for x in pj["scenes"]])
+        page = scene_page(browser, W, H, tw / W)
+        est = [scene_duration(x) for x in pj["scenes"]]
+        per = scene_beats(pj, song_beats(base, pj), est)
+        caps = scene_captions(pj, est) if in_scene_captions(pj) else {}
         for s, bi in zip(pj["scenes"], per):
             d = scene_duration(s)
-            open_scene(page, base, s, W, H, bi)
+            open_scene(page, base, s, W, H, bi, fps, pj.get("look"), caps.get(s["id"]))
             tiles = []
             for t in (min(0.5, d / 4), d / 2, max(0, d - 0.3)):
                 draw(page, t, d)
@@ -473,10 +514,10 @@ def cmd_sheet(a):
     print(f"Sheet -> {out}  ({len(rows)} scenes, 3 stills each)")
 
 
-def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None):
+def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None, look=None, caps=None):
     d = scene_duration(s)
     n = max(1, round(d * fps))
-    open_scene(page, base, s, W, H, beat_info, fps)
+    open_scene(page, base, s, W, H, beat_info, fps, look, caps)
     tmp = dst.with_name(dst.stem + ".part.mp4")
     ow, oh = (W // 2 // 2 * 2, H // 2 // 2 * 2) if preview else (W, H)
     ff = subprocess.Popen(
@@ -627,6 +668,29 @@ def build_audio(base, pj, durs, total, out_wav):
     return True
 
 
+def in_scene_captions(pj):
+    """With a look, captions are drawn in the scene in its own type; without one, burned in after."""
+    return bool(pj.get("captions")) and bool(pj.get("look")) and pj.get("caption_mode") != "burn"
+
+
+def scene_captions(pj, durs):
+    """Each scene's caption words, timed from the scene's start."""
+    tr = caption_transcript(pj, durs)
+    out, t = {}, 0.0
+    starts = []
+    for d in durs:
+        starts.append(t)
+        t += d
+    for s, a, d in zip(pj["scenes"], starts, durs):
+        out[s["id"]] = [
+            {"w": w["w"], "start": round(w["start"] - a, 3), "end": round(w["end"] - a, 3)}
+            for seg in tr["segments"]
+            for w in seg["words"]
+            if a <= w["start"] < a + d
+        ]
+    return out
+
+
 def caption_transcript(pj, durs):
     """Word timings for the narration: spread over each line's own audio (or its scene)."""
     segs, t = [], 0.0
@@ -667,15 +731,19 @@ def cmd_render(a):
     files, durs = [], []
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        page = browser.new_page(viewport={"width": W, "height": H})
-        per = scene_beats(pj, song_beats(base, pj), [round(scene_duration(x) * fps) / fps for x in scenes])
+        page = scene_page(browser, W, H)
+        est = [round(scene_duration(x) * fps) / fps for x in scenes]
+        per = scene_beats(pj, song_beats(base, pj), est)
+        caps = scene_captions(pj, est) if in_scene_captions(pj) else {}
         for s, bi in zip(scenes, per):
             dst = work / f"{s['id']}{'_p' if a.preview else ''}.mp4"
             if a.only and s["id"] != a.only and dst.exists():
                 durs.append(round(scene_duration(s) * fps) / fps)
             else:
                 print(f"  drawing {s['id']} ({scene_duration(s):.1f}s)")
-                durs.append(render_scene(page, base, s, W, H, fps, dst, a.preview, bi))
+                durs.append(
+                    render_scene(page, base, s, W, H, fps, dst, a.preview, bi, pj.get("look"), caps.get(s["id"]))
+                )
             files.append(dst)
         browser.close()
     total = sum(durs)
@@ -717,7 +785,7 @@ def cmd_render(a):
         )
     else:
         shutil.copyfile(silent, joined)
-    if pj.get("captions") and any(s.get("narration") for s in scenes):
+    if pj.get("captions") and not in_scene_captions(pj) and any(s.get("narration") for s in scenes):
         tr = work / "narration.json"
         save_json(caption_transcript(pj, durs), tr)
         args = [sys.executable, str(HERE / "captions.py"), str(joined), str(tr), "--out", str(out)]
