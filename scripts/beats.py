@@ -3,6 +3,7 @@
 Usage: python beats.py SONG [--out beats.json] [--start SEC] [--end SEC]
 Accepts audio files or videos (audio is extracted).
 """
+
 import argparse
 import tempfile
 from pathlib import Path
@@ -20,8 +21,7 @@ def analyze(song, start=0.0, end=None):
         wav = song
         if song.suffix.lower() not in {".wav"}:
             wav = extract_audio(song, Path(td) / "a.wav")
-        y, sr = librosa.load(str(wav), sr=22050, mono=True, offset=start,
-                             duration=(end - start) if end else None)
+        y, sr = librosa.load(str(wav), sr=22050, mono=True, offset=start, duration=(end - start) if end else None)
     dur = len(y) / sr
     hop = 512
     onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop)

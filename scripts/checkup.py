@@ -14,6 +14,7 @@ Checks each file for:
 --tests   also tries face detection and a 20-second transcript on the footage, so you find
           out now whether those features will work on your machine.
 """
+
 import argparse
 import json
 import re
@@ -26,14 +27,27 @@ from common import VIDEO_EXTS, audio_tracks, collect_media, ffmpeg, measure_lufs
 
 
 def stream_info(path):
-    res = run([need("ffprobe"), "-v", "error", "-select_streams", "v:0", "-show_entries",
-               "stream=codec_name,width,height,r_frame_rate,avg_frame_rate,color_transfer,color_primaries,"
-               "pix_fmt:stream_side_data=rotation,side_data_type", "-of", "json", str(path)])
+    res = run(
+        [
+            need("ffprobe"),
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name,width,height,r_frame_rate,avg_frame_rate,color_transfer,color_primaries,"
+            "pix_fmt:stream_side_data=rotation,side_data_type",
+            "-of",
+            "json",
+            str(path),
+        ]
+    )
     s = (json.loads(res.stdout).get("streams") or [{}])[0]
     side = s.get("side_data_list") or []
     s["rotation"] = next((d.get("rotation") for d in side if "rotation" in d), 0)
-    s["dolby_vision"] = any("DOVI" in str(d.get("side_data_type", "")) or "Dolby" in str(d.get("side_data_type", ""))
-                            for d in side)
+    s["dolby_vision"] = any(
+        "DOVI" in str(d.get("side_data_type", "")) or "Dolby" in str(d.get("side_data_type", "")) for d in side
+    )
     return s
 
 
@@ -46,8 +60,22 @@ def rate(r):
 
 
 def frame_timing(path, seconds=30):
-    res = run([need("ffprobe"), "-v", "error", "-select_streams", "v:0", "-read_intervals", f"%+{seconds}",
-               "-show_entries", "packet=pts_time,flags", "-of", "csv=p=0", str(path)])
+    res = run(
+        [
+            need("ffprobe"),
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-read_intervals",
+            f"%+{seconds}",
+            "-show_entries",
+            "packet=pts_time,flags",
+            "-of",
+            "csv=p=0",
+            str(path),
+        ]
+    )
     pts, keys = [], []
     for line in res.stdout.splitlines():
         parts = line.split(",")
@@ -72,53 +100,105 @@ def has_filter(name):
 def fix(path, out, vfr, hdr, fps):
     vf = []
     if hdr:
-        vf.append("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,"
-                  "zscale=t=bt709:m=bt709:r=tv")
+        vf.append(
+            "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv"
+        )
     if vfr:
         vf.append(f"fps={fps}")
     vf.append("format=yuv420p")
-    ffmpeg(["-i", str(path), "-map", "0:v:0", "-map", "0:a?", "-vf", ",".join(vf), "-c:v", "libx264",
-            "-preset", "medium", "-crf", "16", "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", str(out)], hw=True)
+    ffmpeg(
+        [
+            "-i",
+            str(path),
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a?",
+            "-vf",
+            ",".join(vf),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "16",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "256k",
+            "-movflags",
+            "+faststart",
+            str(out),
+        ],
+        hw=True,
+    )
 
 
 def quick_tests(path, info):
     notes = []
     try:
         import cv2
+
         xml = Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
         if not xml.exists():
-            notes.append("Face tracking: OpenCV is missing its face files. Fix: pip install \"opencv-python-headless<5\"")
+            notes.append('Face tracking: OpenCV is missing its face files. Fix: pip install "opencv-python-headless<5"')
         else:
             det = cv2.CascadeClassifier(str(xml))
             hits = 0
             for t in np.linspace(0, max(0.0, info["duration"] - 0.5), 10):
-                res = subprocess.run([need("ffmpeg"), "-hide_banner", "-loglevel", "error", "-ss", f"{t:.2f}", "-i",
-                                      str(path), "-frames:v", "1", "-vf", "scale=640:-2,format=gray", "-f", "rawvideo",
-                                      "-"], capture_output=True)
+                res = subprocess.run(
+                    [
+                        need("ffmpeg"),
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-ss",
+                        f"{t:.2f}",
+                        "-i",
+                        str(path),
+                        "-frames:v",
+                        "1",
+                        "-vf",
+                        "scale=640:-2,format=gray",
+                        "-f",
+                        "rawvideo",
+                        "-",
+                    ],
+                    capture_output=True,
+                )
                 h = len(res.stdout) // 640
                 if h:
-                    img = np.frombuffer(res.stdout[:640 * h], np.uint8).reshape(h, 640)
+                    img = np.frombuffer(res.stdout[: 640 * h], np.uint8).reshape(h, 640)
                     hits += len(det.detectMultiScale(img, 1.12, 5, minSize=(int(h * 0.07),) * 2)) > 0
-            notes.append(f"Face tracking: a face was found in {hits}/10 sample frames"
-                         + (" - reframe.py will follow it." if hits >= 5 else
-                            " - for this footage use --keyframes or a centre/blurred crop."))
+            notes.append(
+                f"Face tracking: a face was found in {hits}/10 sample frames"
+                + (
+                    " - reframe.py will follow it."
+                    if hits >= 5
+                    else " - for this footage use --keyframes or a centre/blurred crop."
+                )
+            )
     except ImportError:
-        notes.append("Face tracking: not installed (pip install \"opencv-python-headless<5\") - only needed for vlogs.")
+        notes.append('Face tracking: not installed (pip install "opencv-python-headless<5") - only needed for vlogs.')
     try:
         import tempfile
+
         from faster_whisper import WhisperModel
+
         with tempfile.TemporaryDirectory() as td:
             wav = Path(td) / "a.wav"
             ffmpeg(["-t", "20", "-i", str(path), "-map", "0:a:0", "-ac", "1", "-ar", "16000", str(wav)])
             model = WhisperModel("tiny", device="auto", compute_type="int8")
             segs, _ = model.transcribe(str(wav))
             text = " ".join(s.text.strip() for s in segs)[:120]
-        notes.append(f"Transcripts: working. First 20s heard as: \"{text or '(no speech)'}\"")
+        notes.append(f'Transcripts: working. First 20s heard as: "{text or "(no speech)"}"')
     except ImportError:
         notes.append("Transcripts: not installed (pip install faster-whisper) - only needed for vlogs/captions.")
     except Exception as e:
-        notes.append(f"Transcripts: installed but the speech model couldn't load ({type(e).__name__}). It downloads on "
-                     "first use, so check the internet connection, then run vlog_cut.py transcribe once.")
+        notes.append(
+            f"Transcripts: installed but the speech model couldn't load ({type(e).__name__}). It downloads on "
+            "first use, so check the internet connection, then run vlog_cut.py transcribe once."
+        )
     return notes
 
 
@@ -134,39 +214,60 @@ def check(path, a):
     vfr = vfr_score > 0.08 or (r and avg and abs(r - avg) / r > 0.02)
     transfer = (s.get("color_transfer") or "").lower()
     hdr = transfer in ("arib-std-b67", "smpte2084") or s.get("dolby_vision")
-    notes.append(f"{info['width']}x{info['height']} @ {fps:.2f} fps, {s.get('codec_name', '?')}, "
-                 f"{info['duration'] / 60:.1f} min" + (f", rotated {s['rotation']}°" if s.get("rotation") else ""))
+    notes.append(
+        f"{info['width']}x{info['height']} @ {fps:.2f} fps, {s.get('codec_name', '?')}, "
+        f"{info['duration'] / 60:.1f} min" + (f", rotated {s['rotation']}°" if s.get("rotation") else "")
+    )
     if vfr:
-        problems.append("Variable frame rate (common on phones and screen recorders). Cuts can make the audio drift "
-                        "out of sync. Fix: edit a constant-frame-rate copy (--fix).")
+        problems.append(
+            "Variable frame rate (common on phones and screen recorders). Cuts can make the audio drift "
+            "out of sync. Fix: edit a constant-frame-rate copy (--fix)."
+        )
     if hdr:
-        kind = "HLG" if transfer == "arib-std-b67" else ("Dolby Vision/PQ" if s.get("dolby_vision") or transfer == "smpte2084" else "HDR")
+        kind = (
+            "HLG"
+            if transfer == "arib-std-b67"
+            else ("Dolby Vision/PQ" if s.get("dolby_vision") or transfer == "smpte2084" else "HDR")
+        )
         msg = f"HDR video ({kind}). Edited as-is, colours come out grey and washed out. Fix: an SDR copy (--fix)."
         if not has_filter("zscale"):
-            msg += " Your ffmpeg lacks 'zscale', which the fix needs: install the full build (Windows: gyan.dev 'full')."
+            msg += (
+                " Your ffmpeg lacks 'zscale', which the fix needs: install the full build (Windows: gyan.dev 'full')."
+            )
         problems.append(msg)
     tracks = audio_tracks(path) if info["has_audio"] else []
     if not tracks:
         problems.append("No audio track.")
     elif len(tracks) > 1:
         names = ", ".join(f"#{t['track']} {t['title'] or 'untitled'}" for t in tracks)
-        notes.append(f"{len(tracks)} audio tracks ({names}). Good: game and mic can be handled separately "
-                     "(--audio-track N).")
+        notes.append(
+            f"{len(tracks)} audio tracks ({names}). Good: game and mic can be handled separately (--audio-track N)."
+        )
     else:
         notes.append("1 audio track: if you talk while recording, your voice is mixed with the game sound.")
     if kgap and kgap > 4:
-        notes.append(f"Keyframes every {kgap:.1f}s: the clip library's fast mode samples that sparsely; "
-                     "use library.py index --accurate for short clips.")
+        notes.append(
+            f"Keyframes every {kgap:.1f}s: the clip library's fast mode samples that sparsely; "
+            "use library.py index --accurate for short clips."
+        )
     if tracks:
         lufs, peak = measure_lufs(path) if info["duration"] < 900 else (None, None)
         if lufs is not None:
             notes.append(f"Loudness {lufs} LUFS, peak {peak} dBFS (exports are set to -14 automatically).")
             if peak is not None and peak > -0.3:
-                problems.append("Audio hits 0 dB: the recording itself clipped. Lower the game/mic volume when recording.")
+                problems.append(
+                    "Audio hits 0 dB: the recording itself clipped. Lower the game/mic volume when recording."
+                )
     if a.tests:
         notes += quick_tests(path, info)
-    rep = {"file": str(Path(path).resolve()), "fps": round(fps, 3), "vfr": bool(vfr), "hdr": bool(hdr),
-           "problems": problems, "notes": notes}
+    rep = {
+        "file": str(Path(path).resolve()),
+        "fps": round(fps, 3),
+        "vfr": bool(vfr),
+        "hdr": bool(hdr),
+        "problems": problems,
+        "notes": notes,
+    }
     if a.fix and (vfr or hdr):
         if hdr and not has_filter("zscale"):
             rep["fixed"] = None

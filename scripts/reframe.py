@@ -9,6 +9,7 @@ OpenCV 5 no longer ships the detector files). No face found -> centre crop, with
 --keyframes sets the crop centre by hand (time:fraction of width), e.g. to stay on one person
 when two are talking, or to fix a spot where detection picked the wrong face.
 """
+
 import argparse
 import subprocess
 import tempfile
@@ -33,9 +34,24 @@ def detect_faces(video, info):
         die('This OpenCV has no face detector files (OpenCV 5+). Run: python -m pip install "opencv-python-headless<5"')
     det = cv2.CascadeClassifier(str(xml))
     h = int(DET_W * info["height"] / info["width"]) // 2 * 2
-    proc = subprocess.Popen([need("ffmpeg"), "-hide_banner", "-loglevel", "error", *dec_args(), "-i", str(video), "-an",
-                             "-vf", f"fps={SAMPLE_FPS},scale={DET_W}:{h},format=gray", "-f", "rawvideo", "-"],
-                            stdout=subprocess.PIPE)
+    proc = subprocess.Popen(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *dec_args(),
+            "-i",
+            str(video),
+            "-an",
+            "-vf",
+            f"fps={SAMPLE_FPS},scale={DET_W}:{h},format=gray",
+            "-f",
+            "rawvideo",
+            "-",
+        ],
+        stdout=subprocess.PIPE,
+    )
     frame_bytes = DET_W * h
     times, cx, sz = [], [], []
     prev = None
@@ -54,6 +70,7 @@ def detect_faces(video, info):
                 centre = (x + w / 2) / DET_W
                 stick = 0.0 if prev is None else abs(centre - prev)
                 return w * hh * (1.0 - min(stick, 0.5))
+
             x, y, w, hh = max(faces, key=rank)
             c, s = (x + w / 2) / DET_W, hh / h
             prev = c
@@ -79,15 +96,15 @@ def camera_path(times, cx, crop_frac, deadzone):
         else:
             last = filled[k]
     # light median to kill single-sample detector jumps
-    med = np.array([np.median(filled[max(0, k - 2):k + 3]) for k in range(len(filled))])
+    med = np.array([np.median(filled[max(0, k - 2) : k + 3]) for k in range(len(filled))])
     half = crop_frac / 2
     cam = np.empty_like(med)
     c = float(np.clip(med[0], half, 1 - half))
     for k, target in enumerate(med):
         target = float(np.clip(target, half, 1 - half))
         off = target - c
-        if abs(off) > deadzone * crop_frac:          # face left the comfortable middle of the shot
-            c += off * 0.22                           # glide (about 0.5 s to settle)
+        if abs(off) > deadzone * crop_frac:  # face left the comfortable middle of the shot
+            c += off * 0.22  # glide (about 0.5 s to settle)
         cam[k] = c
     return cam, float(valid.mean())
 
@@ -119,10 +136,29 @@ def render(video, info, cam_times, cam, crop_frac, out, W, H, preview):
         cmds.write_text("\n".join(lines) + "\n", encoding="utf-8")
         enc = ["-preset", "veryfast", "-crf", "24"] if preview else ["-preset", "medium", "-crf", "18"]
         cpath = cmds.as_posix().replace(":", "\\:")
-        ffmpeg(["-i", str(video), "-vf",
+        ffmpeg(
+            [
+                "-i",
+                str(video),
+                "-vf",
                 f"sendcmd=f='{cpath}',crop@c=w={cw}:h={src_h}:x={xs[0]}:y=0,scale={W}:{H},setsar=1,format=yuv420p",
-                "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", *enc, "-c:a", "aac", "-b:a", "192k",
-                "-movflags", "+faststart", str(out)], hw=True)
+                "-map",
+                "0:v:0",
+                "-map",
+                "0:a?",
+                "-c:v",
+                "libx264",
+                *enc,
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-movflags",
+                "+faststart",
+                str(out),
+            ],
+            hw=True,
+        )
     return len(lines)
 
 
@@ -134,7 +170,11 @@ if __name__ == "__main__":
     ap.add_argument("--keyframes", help='manual crop centres "time:fraction,..." (overrides face tracking)')
     ap.add_argument("--deadzone", type=float, default=0.12, help="how far you can move before the camera follows")
     ap.add_argument("--preview", action="store_true")
-    ap.add_argument("--res", default="1080", help="output short side: 1080 (TikTok/Reels max), 1440, 2160, source (bigger only helps YouTube Shorts)")
+    ap.add_argument(
+        "--res",
+        default="1080",
+        help="output short side: 1080 (TikTok/Reels max), 1440, 2160, source (bigger only helps YouTube Shorts)",
+    )
     a = ap.parse_args()
 
     info = probe(a.video)
@@ -146,11 +186,37 @@ if __name__ == "__main__":
     if crop_frac >= 1:
         # already vertical (phone footage): nothing to track, just fit it to the target size
         print("Already vertical: fitting it to the target size instead of reframing.")
-        vf = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,format=yuv420p")
+        vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,format=yuv420p"
         if a.preview:
-            vf = vf.replace(f"scale={W}:{H}", f"scale={W // 2}:{H // 2}").replace(f"crop={W}:{H}", f"crop={W // 2}:{H // 2}")
-        ffmpeg(["-i", a.video, "-vf", vf, "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-preset", "medium",
-                "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(a.out)], hw=True)
+            vf = vf.replace(f"scale={W}:{H}", f"scale={W // 2}:{H // 2}").replace(
+                f"crop={W}:{H}", f"crop={W // 2}:{H // 2}"
+            )
+        ffmpeg(
+            [
+                "-i",
+                a.video,
+                "-vf",
+                vf,
+                "-map",
+                "0:v:0",
+                "-map",
+                "0:a?",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "18",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-movflags",
+                "+faststart",
+                str(a.out),
+            ],
+            hw=True,
+        )
         print(f"Done -> {a.out}")
         raise SystemExit(0)
     if a.keyframes:
@@ -163,8 +229,10 @@ if __name__ == "__main__":
         cam, found = camera_path(times, cx, crop_frac, a.deadzone)
         print(f"  face found in {found * 100:.0f}% of samples")
         if found < 0.2:
-            print("  Warning: little or no face found, so this is mostly a centre crop. For gameplay use "
-                  "export.py --fit hud/blur; for people off-centre use --keyframes.")
+            print(
+                "  Warning: little or no face found, so this is mostly a centre crop. For gameplay use "
+                "export.py --fit hud/blur; for people off-centre use --keyframes."
+            )
     n = render(a.video, info, times, cam, crop_frac, a.out, W, H, a.preview)
     if info["has_audio"]:
         normalize_loudness(a.out, -14.0)

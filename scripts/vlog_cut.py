@@ -16,6 +16,7 @@ Commands:
       cuts feel deliberate instead of glitchy. --punch-center sets where it zooms (0 = left, 1 = right
       of the frame, e.g. where the face is).
 """
+
 import argparse
 import re
 import subprocess
@@ -46,10 +47,13 @@ def transcribe(video, model="small", language=None, track=0):
         segs, info = m.transcribe(str(wav), language=language, word_timestamps=True, vad_filter=True)
         out = []
         for i, s in enumerate(segs, 1):
-            words = [{"w": w.word.strip(), "start": round(w.start, 3), "end": round(w.end, 3),
-                      "p": round(w.probability, 3)} for w in (s.words or [])]
-            out.append({"id": i, "start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip(),
-                        "words": words})
+            words = [
+                {"w": w.word.strip(), "start": round(w.start, 3), "end": round(w.end, 3), "p": round(w.probability, 3)}
+                for w in (s.words or [])
+            ]
+            out.append(
+                {"id": i, "start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip(), "words": words}
+            )
             print(f"  [{i:04d}] {s.start:7.2f}s  {s.text.strip()[:70]}", end="\r")
     print()
     return {"video": str(Path(video).resolve()), "language": info.language, "segments": out}
@@ -79,9 +83,12 @@ def fmt(t):
 
 def write_script(tr, out):
     flags = retake_flags(tr["segments"])
-    lines = ["# EDIT BY TRANSCRIPT",
-             "# Delete a line, or put # at its start, to cut that part. Keep the [number] tags.",
-             "# Lines marked RETAKE? look like a take you redo right after: usually cut the first one.", ""]
+    lines = [
+        "# EDIT BY TRANSCRIPT",
+        "# Delete a line, or put # at its start, to cut that part. Keep the [number] tags.",
+        "# Lines marked RETAKE? look like a take you redo right after: usually cut the first one.",
+        "",
+    ]
     for s in tr["segments"]:
         tag = f"   <- RETAKE? (redone in [{flags[s['id']]:04d}])" if s["id"] in flags else ""
         lines.append(f"[{s['id']:04d}] {fmt(s['start'])}-{fmt(s['end'])}  {s['text']}{tag}")
@@ -100,16 +107,47 @@ def read_script_ids(path):
 
 # ------------------------------------------------------------------ cut planning
 def mean_volume(video, track):
-    res = subprocess.run([need("ffmpeg"), "-hide_banner", "-i", str(video), "-map", f"0:a:{track}", "-af",
-                          "volumedetect", "-f", "null", "-"], capture_output=True, text=True, errors="replace")
+    res = subprocess.run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-i",
+            str(video),
+            "-map",
+            f"0:a:{track}",
+            "-af",
+            "volumedetect",
+            "-f",
+            "null",
+            "-",
+        ],
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
     m = re.search(r"mean_volume:\s+(-?[\d.]+) dB", res.stderr)
     return float(m.group(1)) if m else -30.0
 
 
 def silences(video, track, noise_db, min_sil):
-    res = subprocess.run([need("ffmpeg"), "-hide_banner", "-i", str(video), "-map", f"0:a:{track}", "-af",
-                          f"silencedetect=noise={noise_db}dB:d={min_sil}", "-f", "null", "-"],
-                         capture_output=True, text=True, errors="replace")
+    res = subprocess.run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-i",
+            str(video),
+            "-map",
+            f"0:a:{track}",
+            "-af",
+            f"silencedetect=noise={noise_db}dB:d={min_sil}",
+            "-f",
+            "null",
+            "-",
+        ],
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
     starts = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", res.stderr)]
     ends = [float(x) for x in re.findall(r"silence_end: (-?[\d.]+)", res.stderr)]
     out = list(zip(starts, ends))
@@ -187,6 +225,7 @@ def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
     keep = [(round(s * fps) / fps, round(e * fps) / fps) for s, e in keep]
     keep = [(s, e) for s, e in keep if e - s >= 1 / fps]
     with tempfile.TemporaryDirectory() as td:
+
         def one(k):
             s, e = keep[k]
             n = round((e - s) * fps)
@@ -197,17 +236,52 @@ def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
                 zw, zh = int(W * punch) // 2 * 2, int(H * punch) // 2 * 2
                 cx = min(max(punch_center, 0.0), 1.0)
                 look = f"scale={zw}:{zh},crop={W}:{H}:(iw-{W})*{cx:.3f}:(ih-{H})/2"
-            ffmpeg(["-ss", f"{s:.4f}", "-t", f"{D + 0.1:.4f}", "-i", str(video), "-an",
-                    "-vf", f"{look},fps={fps},tpad=stop_mode=clone:stop=-1,format=yuv420p",
-                    "-frames:v", str(n), "-c:v", "libx264", "-preset", "veryfast", "-crf", "17", str(v)])
+            ffmpeg(
+                [
+                    "-ss",
+                    f"{s:.4f}",
+                    "-t",
+                    f"{D + 0.1:.4f}",
+                    "-i",
+                    str(video),
+                    "-an",
+                    "-vf",
+                    f"{look},fps={fps},tpad=stop_mode=clone:stop=-1,format=yuv420p",
+                    "-frames:v",
+                    str(n),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "veryfast",
+                    "-crf",
+                    "17",
+                    str(v),
+                ]
+            )
             # (veryfast/17: about half the temp disk space of ultrafast/16 at near-identical quality,
             #  which matters when a 45-minute recording is cut into hundreds of pieces)
             if info["has_audio"]:
                 f = min(0.008, D / 4)
-                ffmpeg(["-ss", f"{s:.4f}", "-t", f"{D + 0.1:.4f}", "-i", str(video), "-map", f"0:a:{track}",
-                        "-af", f"aresample=48000,apad,atrim=0:{D:.5f},afade=t=in:d={f:.4f},"
-                               f"afade=t=out:st={max(D - f, 0):.4f}:d={f:.4f}",
-                        "-ac", "2", "-c:a", "pcm_s16le", str(aw)])
+                ffmpeg(
+                    [
+                        "-ss",
+                        f"{s:.4f}",
+                        "-t",
+                        f"{D + 0.1:.4f}",
+                        "-i",
+                        str(video),
+                        "-map",
+                        f"0:a:{track}",
+                        "-af",
+                        f"aresample=48000,apad,atrim=0:{D:.5f},afade=t=in:d={f:.4f},"
+                        f"afade=t=out:st={max(D - f, 0):.4f}:d={f:.4f}",
+                        "-ac",
+                        "2",
+                        "-c:a",
+                        "pcm_s16le",
+                        str(aw),
+                    ]
+                )
             return v, aw
 
         with ThreadPoolExecutor(max(1, min(6, (__import__("os").cpu_count() or 2) // 2))) as ex:
@@ -216,8 +290,22 @@ def render(video, info, keep, out, track, preview, punch=0.0, punch_center=0.5):
         args = ["-f", "concat", "-safe", "0", "-i", str(Path(td) / "v.txt")]
         if info["has_audio"]:
             (Path(td) / "a.txt").write_text("\n".join(concat_line(a) for _, a in parts), encoding="utf-8")
-            args += ["-f", "concat", "-safe", "0", "-i", str(Path(td) / "a.txt"), "-map", "0:v", "-map", "1:a",
-                     "-c:a", "aac", "-b:a", "192k"]
+            args += [
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(Path(td) / "a.txt"),
+                "-map",
+                "0:v",
+                "-map",
+                "1:a",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+            ]
         enc = ["-preset", "veryfast", "-crf", "26"] if preview else ["-preset", "medium", "-crf", "18"]
         ffmpeg([*args, "-c:v", "libx264", *enc, "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], hw=True)
     return keep, fps
@@ -230,32 +318,59 @@ def write_outputs(video, info, keep, fps, out, punch=0.0):
     mapping = []
     for i, (s, e) in enumerate(keep):
         n = round((e - s) * fps)
-        segs.append({"index": i, "tl_start_frame": t, "tl_end_frame": t + n, "source": str(Path(video).resolve()),
-                     "src_in": s, "speed": 1.0,
-                     "effects": [f"punch-in {int(round((punch - 1) * 100))}%"] if punch > 1 and i % 2 == 1 else []})
+        segs.append(
+            {
+                "index": i,
+                "tl_start_frame": t,
+                "tl_end_frame": t + n,
+                "source": str(Path(video).resolve()),
+                "src_in": s,
+                "speed": 1.0,
+                "effects": [f"punch-in {int(round((punch - 1) * 100))}%"] if punch > 1 and i % 2 == 1 else [],
+            }
+        )
         mapping.append({"src_start": round(s, 4), "src_end": round(e, 4), "out_start": round(t / fps, 4)})
         t += n
-    save_json({"video": str(Path(video).resolve()), "fps": fps, "ranges": mapping},
-              Path(out).with_suffix(".map.json"))
-    write_xmeml({"name": Path(out).stem, "fps": fps, "width": info["width"], "height": info["height"],
-                 "segments": segs, "song": None, "source_audio": info["has_audio"]}, Path(out).with_suffix(".xml"))
+    save_json({"video": str(Path(video).resolve()), "fps": fps, "ranges": mapping}, Path(out).with_suffix(".map.json"))
+    write_xmeml(
+        {
+            "name": Path(out).stem,
+            "fps": fps,
+            "width": info["width"],
+            "height": info["height"],
+            "segments": segs,
+            "song": None,
+            "source_audio": info["has_audio"],
+        },
+        Path(out).with_suffix(".xml"),
+    )
     return t / fps
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("transcribe"); p.add_argument("video"); p.add_argument("--model", default="small")
-    p.add_argument("--language"); p.add_argument("--audio-track", type=int, default=0)
+    p = sub.add_parser("transcribe")
+    p.add_argument("video")
+    p.add_argument("--model", default="small")
+    p.add_argument("--language")
+    p.add_argument("--audio-track", type=int, default=0)
     p.add_argument("--out", default="transcript.json")
-    p = sub.add_parser("script"); p.add_argument("video"); p.add_argument("transcript")
+    p = sub.add_parser("script")
+    p.add_argument("video")
+    p.add_argument("transcript")
     p.add_argument("--out", default="script.txt")
-    p = sub.add_parser("cut"); p.add_argument("video"); p.add_argument("--transcript"); p.add_argument("--script")
-    p.add_argument("--no-silences", action="store_true"); p.add_argument("--fillers", action="store_true")
+    p = sub.add_parser("cut")
+    p.add_argument("video")
+    p.add_argument("--transcript")
+    p.add_argument("--script")
+    p.add_argument("--no-silences", action="store_true")
+    p.add_argument("--fillers", action="store_true")
     p.add_argument("--min-silence", type=float, default=0.45, help="shortest pause to cut (s)")
     p.add_argument("--pad", type=float, default=0.12, help="breathing room kept at each side of a cut (s)")
     p.add_argument("--noise", default="auto", help="silence threshold in dB, or auto")
-    p.add_argument("--audio-track", type=int, default=0); p.add_argument("--out", default="cut.mp4")
+    p.add_argument("--audio-track", type=int, default=0)
+    p.add_argument("--out", default="cut.mp4")
     p.add_argument("--preview", action="store_true")
     p.add_argument("--lufs", type=float, default=-14.0)
     p.add_argument("--punch-in", type=float, default=0.0, help="zoom every other piece, e.g. 1.12")
@@ -281,7 +396,11 @@ if __name__ == "__main__":
         new_len = write_outputs(a.video, info, keep, fps, a.out, a.punch_in)
         if info["has_audio"] and a.lufs:
             normalize_loudness(a.out, a.lufs)
-        print(f"{info['duration']:.1f}s -> {new_len:.1f}s ({len(keep)} pieces, "
-              f"{info['duration'] - new_len:.1f}s removed: silences {removed['silence']:.1f}s, "
-              f"fillers {removed['fillers']}, deleted lines {removed['lines']})")
-        print(f"Done -> {a.out}  (+ {Path(a.out).with_suffix('.map.json').name}, {Path(a.out).with_suffix('.xml').name})")
+        print(
+            f"{info['duration']:.1f}s -> {new_len:.1f}s ({len(keep)} pieces, "
+            f"{info['duration'] - new_len:.1f}s removed: silences {removed['silence']:.1f}s, "
+            f"fillers {removed['fillers']}, deleted lines {removed['lines']})"
+        )
+        print(
+            f"Done -> {a.out}  (+ {Path(a.out).with_suffix('.map.json').name}, {Path(a.out).with_suffix('.xml').name})"
+        )

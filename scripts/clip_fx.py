@@ -27,13 +27,26 @@ EDIT.json (times are seconds in the INPUT clip unless an op says "time": "output
 speed/ramp ranges must not overlap. Motion blur is added automatically to fast (>1.4x) parts.
 Prints the source->output time map so text/effects can be checked against the result.
 """
+
 import argparse
 import tempfile
 from pathlib import Path
 
-from common import (blur_radius, concat_line, die, ff_path, ffmpeg, find_font, frame_size, load_json,
-                    normalize_loudness, preview_size, probe, resolve_res, save_json)
-
+from common import (
+    blur_radius,
+    concat_line,
+    die,
+    ff_path,
+    ffmpeg,
+    find_font,
+    frame_size,
+    load_json,
+    normalize_loudness,
+    preview_size,
+    probe,
+    resolve_res,
+    save_json,
+)
 
 
 def build_pieces(spec, dur):
@@ -51,8 +64,11 @@ def build_pieces(spec, dur):
     for (a1, b1, _), (a2, _, _) in zip(ranges, ranges[1:]):
         if a2 < b1 - 1e-6:
             die(f"Speed ranges overlap around {a2:.2f}s. Adjust the ops.")
-    freezes = sorted((float(o["at"]), float(o.get("dur", 0.7))) for o in spec.get("ops", [])
-                     if o["type"] == "freeze" and t0 <= float(o["at"]) <= t1)
+    freezes = sorted(
+        (float(o["at"]), float(o.get("dur", 0.7)))
+        for o in spec.get("ops", [])
+        if o["type"] == "freeze" and t0 <= float(o["at"]) <= t1
+    )
     # split timeline into pieces at every range edge and freeze point
     cuts = sorted({t0, t1, *[x for a, b, _ in ranges for x in (a, b)], *[f for f, _ in freezes]})
     pieces = []
@@ -95,9 +111,11 @@ def fit_chain(W, H, fit):
     if not W:
         return "null"
     if fit == "blur":
-        return (f"split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-                f"boxblur={blur_radius(W, H)}:2[bgb];[fg]scale={W}:{H}:force_original_aspect_ratio=decrease[fgs];"
-                f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2")
+        return (
+            f"split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+            f"boxblur={blur_radius(W, H)}:2[bgb];[fg]scale={W}:{H}:force_original_aspect_ratio=decrease[fgs];"
+            f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2"
+        )
     return f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}"
 
 
@@ -114,17 +132,23 @@ def piece_video_filter(p, spec, W, H, fps, events):
         T = ev["local"]
         if ev["type"] == "zoom":
             z = float(ev.get("amount", 1.15)) - 1
-            parts.append(f"zoompan=z='1+{z:.3f}*gte(it\\,{T:.3f})*pow(max(0\\,1-(it-{T:.3f})/0.3)\\,2)':d=1:"
-                         f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W or 'iw'}x{H or 'ih'}:fps={fps}")
+            parts.append(
+                f"zoompan=z='1+{z:.3f}*gte(it\\,{T:.3f})*pow(max(0\\,1-(it-{T:.3f})/0.3)\\,2)':d=1:"
+                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W or 'iw'}x{H or 'ih'}:fps={fps}"
+            )
         elif ev["type"] == "shake":
             d = float(ev.get("dur", 0.6))
-            parts.append(f"scale=trunc(iw*1.06/2)*2:trunc(ih*1.06/2)*2,"
-                         f"crop=trunc(iw/1.06/2)*2:trunc(ih/1.06/2)*2:"
-                         f"x='(iw-ow)/2+(iw-ow)/2*sin(t*47)*exp(-(t-{T:.3f})*3)*between(t\\,{T:.3f}\\,{T + d:.3f})':"
-                         f"y='(ih-oh)/2+(ih-oh)/2*cos(t*39)*exp(-(t-{T:.3f})*3)*between(t\\,{T:.3f}\\,{T + d:.3f})'")
+            parts.append(
+                f"scale=trunc(iw*1.06/2)*2:trunc(ih*1.06/2)*2,"
+                f"crop=trunc(iw/1.06/2)*2:trunc(ih/1.06/2)*2:"
+                f"x='(iw-ow)/2+(iw-ow)/2*sin(t*47)*exp(-(t-{T:.3f})*3)*between(t\\,{T:.3f}\\,{T + d:.3f})':"
+                f"y='(ih-oh)/2+(ih-oh)/2*cos(t*39)*exp(-(t-{T:.3f})*3)*between(t\\,{T:.3f}\\,{T + d:.3f})'"
+            )
         elif ev["type"] == "flash":
             sign = -1 if ev.get("color", "white") == "black" else 1
-            parts.append(f"eq=eval=frame:brightness='{sign}*between(t\\,{T:.3f}\\,{T + 0.15:.3f})*(1-(t-{T:.3f})/0.15)'")
+            parts.append(
+                f"eq=eval=frame:brightness='{sign}*between(t\\,{T:.3f}\\,{T + 0.15:.3f})*(1-(t-{T:.3f})/0.15)'"
+            )
         elif ev["type"] == "rgb":
             px = max(2, int(14 * (W or 1920) / 1080))
             parts.append(f"rgbashift=rh=-{px}:bh={px}:enable='between(t,{T:.3f},{T + 0.15:.3f})'")
@@ -148,11 +172,14 @@ def text_filters(spec, pieces, W, H):
                 continue
         txt = str(o["text"]).replace("\\", "\\\\").replace(":", "\\:").replace("'", "’")
         from layout import text_size, text_y
+
         size = text_size(W, H, o["text"])
         y = text_y(o.get("position", "top"), W, H)
         fontopt = f"fontfile='{ff_path(font)}':" if font else ""
-        out.append(f"drawtext={fontopt}text='{txt}':fontsize={size}:fontcolor=white:borderw=6:bordercolor=black:"
-                   f"x=(w-text_w)/2:y={y}:enable='between(t,{s:.3f},{e:.3f})'")
+        out.append(
+            f"drawtext={fontopt}text='{txt}':fontsize={size}:fontcolor=white:borderw=6:bordercolor=black:"
+            f"x=(w-text_w)/2:y={y}:enable='between(t,{s:.3f},{e:.3f})'"
+        )
     return ",".join(out)
 
 
@@ -191,47 +218,155 @@ def render(inp, spec, out_path, preview=False):
             if p["kind"] == "freeze":
                 still = Path(td) / f"p{i:03d}.png"
                 ffmpeg(["-ss", f"{p['a']:.3f}", "-i", str(inp), "-frames:v", "1", str(still)])
-                ffmpeg(["-loop", "1", "-framerate", str(fps), "-i", str(still), "-an",
-                        "-vf", f"{fit_chain(W, H, spec.get('fit', 'crop'))},setsar=1,format=yuv420p",
-                        "-frames:v", str(n), "-r", str(fps), "-c:v", "libx264", "-preset", "ultrafast",
-                        "-crf", "16", str(vpart)])
+                ffmpeg(
+                    [
+                        "-loop",
+                        "1",
+                        "-framerate",
+                        str(fps),
+                        "-i",
+                        str(still),
+                        "-an",
+                        "-vf",
+                        f"{fit_chain(W, H, spec.get('fit', 'crop'))},setsar=1,format=yuv420p",
+                        "-frames:v",
+                        str(n),
+                        "-r",
+                        str(fps),
+                        "-c:v",
+                        "libx264",
+                        "-preset",
+                        "ultrafast",
+                        "-crf",
+                        "16",
+                        str(vpart),
+                    ]
+                )
             else:
                 src_len = p["b"] - p["a"]
-                ffmpeg(["-ss", f"{p['a']:.3f}", "-t", f"{src_len + 0.15:.3f}", "-i", str(inp), "-an",
-                        "-vf", piece_video_filter(p, spec, W, H, fps, p.get("events", [])),
-                        "-frames:v", str(n), "-r", str(fps), "-c:v", "libx264", "-preset", "ultrafast",
-                        "-crf", "16", str(vpart)])
+                ffmpeg(
+                    [
+                        "-ss",
+                        f"{p['a']:.3f}",
+                        "-t",
+                        f"{src_len + 0.15:.3f}",
+                        "-i",
+                        str(inp),
+                        "-an",
+                        "-vf",
+                        piece_video_filter(p, spec, W, H, fps, p.get("events", [])),
+                        "-frames:v",
+                        str(n),
+                        "-r",
+                        str(fps),
+                        "-c:v",
+                        "libx264",
+                        "-preset",
+                        "ultrafast",
+                        "-crf",
+                        "16",
+                        str(vpart),
+                    ]
+                )
             # audio for exactly D seconds
-            if info["has_audio"] and p["kind"] == "play" and (p["speed"] == 1 or spec.get("slowmo_audio", "stretch") == "stretch"):
+            if (
+                info["has_audio"]
+                and p["kind"] == "play"
+                and (p["speed"] == 1 or spec.get("slowmo_audio", "stretch") == "stretch")
+            ):
                 af = "aresample=48000"
                 if p["speed"] != 1:
                     af += "," + atempo_chain(p["speed"])
-                ffmpeg(["-ss", f"{p['a']:.3f}", "-t", f"{p['b'] - p['a'] + 0.1:.3f}", "-i", str(inp), "-vn",
-                        "-af", f"{af},apad,atrim=0:{D:.5f}", "-ac", "2", "-c:a", "pcm_s16le", str(apart)])
+                ffmpeg(
+                    [
+                        "-ss",
+                        f"{p['a']:.3f}",
+                        "-t",
+                        f"{p['b'] - p['a'] + 0.1:.3f}",
+                        "-i",
+                        str(inp),
+                        "-vn",
+                        "-af",
+                        f"{af},apad,atrim=0:{D:.5f}",
+                        "-ac",
+                        "2",
+                        "-c:a",
+                        "pcm_s16le",
+                        str(apart),
+                    ]
+                )
             else:
-                ffmpeg(["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", f"{D:.5f}", "-c:a", "pcm_s16le",
-                        str(apart)])
+                ffmpeg(
+                    [
+                        "-f",
+                        "lavfi",
+                        "-i",
+                        "anullsrc=r=48000:cl=stereo",
+                        "-t",
+                        f"{D:.5f}",
+                        "-c:a",
+                        "pcm_s16le",
+                        str(apart),
+                    ]
+                )
             vlist.append(concat_line(vpart))
             alist.append(concat_line(apart))
         (Path(td) / "v.txt").write_text("\n".join(vlist), encoding="utf-8")
         (Path(td) / "a.txt").write_text("\n".join(alist), encoding="utf-8")
-        inputs = ["-f", "concat", "-safe", "0", "-i", str(Path(td) / "v.txt"),
-                  "-f", "concat", "-safe", "0", "-i", str(Path(td) / "a.txt")]
+        inputs = [
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(Path(td) / "v.txt"),
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(Path(td) / "a.txt"),
+        ]
         total = pieces[-1]["out_end"]
         m = spec.get("music")
         if m:
             inputs += ["-ss", str(m.get("start", 0)), "-t", f"{total:.3f}", "-i", m["file"]]
-            graph = (f"[1:a]volume={m.get('game_volume', 0.3)}[g];[2:a]aresample=48000,volume={m.get('volume', 1.0)},"
-                     f"afade=t=out:st={max(total - 1.2, 0):.3f}:d=1.2[mu];"
-                     f"[mu][g]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]")
+            graph = (
+                f"[1:a]volume={m.get('game_volume', 0.3)}[g];[2:a]aresample=48000,volume={m.get('volume', 1.0)},"
+                f"afade=t=out:st={max(total - 1.2, 0):.3f}:d=1.2[mu];"
+                f"[mu][g]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]"
+            )
         else:
             graph = "[1:a]anull[a]"
         tf = text_filters(spec, pieces, W, H)
         graph += f";[0:v]{tf or 'null'}[v]"
         enc = ["-preset", "veryfast", "-crf", "26"] if preview else ["-preset", "medium", "-crf", "18"]
-        ffmpeg([*inputs, "-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", *enc,
-                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "256k", "-t", f"{total:.3f}",
-                "-movflags", "+faststart", str(out_path)], hw=True)
+        ffmpeg(
+            [
+                *inputs,
+                "-filter_complex",
+                graph,
+                "-map",
+                "[v]",
+                "-map",
+                "[a]",
+                "-c:v",
+                "libx264",
+                *enc,
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "256k",
+                "-t",
+                f"{total:.3f}",
+                "-movflags",
+                "+faststart",
+                str(out_path),
+            ],
+            hw=True,
+        )
     if spec.get("normalize_lufs", -14) is not None:
         normalize_loudness(out_path, float(spec.get("normalize_lufs", -14)))
     return pieces
@@ -247,7 +382,7 @@ if __name__ == "__main__":
     spec = load_json(a.edit)
     m = spec.get("music")
     if m and m.get("file") and not Path(m["file"]).exists():
-        alt = Path(a.edit).resolve().parent / m["file"]   # relative to the edit file, not the shell
+        alt = Path(a.edit).resolve().parent / m["file"]  # relative to the edit file, not the shell
         if alt.exists():
             m["file"] = str(alt)
         else:

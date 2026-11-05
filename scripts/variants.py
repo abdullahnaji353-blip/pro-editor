@@ -11,6 +11,7 @@ C  "Straight to drop" - song starts ~1s before its first drop, best clip on the 
 Previews by default (fast); --full renders all three at full quality.
 Post them a few days apart (same time of day) and compare retention/views, not just likes.
 """
+
 import argparse
 import subprocess
 import sys
@@ -22,8 +23,18 @@ HERE = Path(__file__).resolve().parent
 
 
 def run_build(base, extra, out, preview):
-    cmd = [sys.executable, str(HERE / "build_montage.py"), *base, *extra, "--out", str(out),
-           "--plan-out", str(out.with_suffix(".plan.json")), "--xml-out", str(out.with_suffix(".xml"))]
+    cmd = [
+        sys.executable,
+        str(HERE / "build_montage.py"),
+        *base,
+        *extra,
+        "--out",
+        str(out),
+        "--plan-out",
+        str(out.with_suffix(".plan.json")),
+        "--xml-out",
+        str(out.with_suffix(".xml")),
+    ]
     if preview:
         cmd.append("--preview")
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -74,10 +85,16 @@ if __name__ == "__main__":
 
     plan = [
         ("A_best_clip_first", "Opens on your strongest moment", ["--song-start", str(a.song_start), "--hook-first"]),
-        ("B_remix", "Same song section, clips in a different order",
-         ["--song-start", str(a.song_start), "--shuffle", "--seed", "23"]),
-        ("C_straight_to_drop", f"Song starts at {c_start:.1f}s, ~1s before its drop; best clip on the drop",
-         ["--song-start", f"{c_start:.3f}", "--hook-first"]),
+        (
+            "B_remix",
+            "Same song section, clips in a different order",
+            ["--song-start", str(a.song_start), "--shuffle", "--seed", "23"],
+        ),
+        (
+            "C_straight_to_drop",
+            f"Song starts at {c_start:.1f}s, ~1s before its drop; best clip on the drop",
+            ["--song-start", f"{c_start:.3f}", "--hook-first"],
+        ),
     ]
     summary = []
     for name, why, extra in plan:
@@ -86,8 +103,12 @@ if __name__ == "__main__":
         dur = run_build(base, extra, out, not a.full)
         summary.append({"name": name, "file": str(out.resolve()), "what_changes": why, "duration": round(dur, 2)})
         print(f"  -> {out} ({dur:.1f}s)  {why}")
-    save_json({"variants": summary,
-               "how_to_test": "Post one every 2-3 days at the same time of day. Compare average watch time / "
-                              "retention and views after 48h. The winner tells you what to repeat."},
-              out_dir / "variants.json")
+    save_json(
+        {
+            "variants": summary,
+            "how_to_test": "Post one every 2-3 days at the same time of day. Compare average watch time / "
+            "retention and views after 48h. The winner tells you what to repeat.",
+        },
+        out_dir / "variants.json",
+    )
     print(f"Summary -> {out_dir / 'variants.json'}")

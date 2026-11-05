@@ -20,6 +20,7 @@ Commands (all take --lib DIR, default ./clip-library):
   cut CLIP_ID|VIDEO_ID@START-END [--pad 0.5] [--out FILE]
                             Export a clip (accurate cut, re-encoded).
 """
+
 import argparse
 import hashlib
 import math
@@ -29,8 +30,19 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from common import (VIDEO_EXTS, audio_tracks, collect_media, die, ff_path, ffmpeg, find_font,
-                    load_json, need, probe, save_json)
+from common import (
+    VIDEO_EXTS,
+    audio_tracks,
+    collect_media,
+    die,
+    ff_path,
+    ffmpeg,
+    find_font,
+    load_json,
+    need,
+    probe,
+    save_json,
+)
 
 COLS = 4
 PER_SHEET = 16
@@ -98,15 +110,15 @@ def sample_frames(path, every, accurate, out_dir, width=320):
     font = find_font()
     label = ""
     if font:
-        label = (f",drawtext=fontfile='{ff_path(font)}':text='%{{pts\\:hms}}':fontsize=22:fontcolor=white:"
-                 f"box=1:boxcolor=black@0.6:boxborderw=4:x=6:y=6")
-    vf = (f"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,{every})',"
-          f"scale={width}:-2{label},showinfo")
+        label = (
+            f",drawtext=fontfile='{ff_path(font)}':text='%{{pts\\:hms}}':fontsize=22:fontcolor=white:"
+            f"box=1:boxcolor=black@0.6:boxborderw=4:x=6:y=6"
+        )
+    vf = f"select='isnan(prev_selected_t)+gte(t-prev_selected_t\\,{every})',scale={width}:-2{label},showinfo"
     cmd = [need("ffmpeg"), "-hide_banner"]
     if not accurate:
         cmd += ["-skip_frame", "nokey"]
-    cmd += ["-i", str(path), "-an", "-vf", vf, "-fps_mode", "vfr", "-q:v", "4",
-            str(Path(out_dir) / "f_%06d.jpg")]
+    cmd += ["-i", str(path), "-an", "-vf", vf, "-fps_mode", "vfr", "-q:v", "4", str(Path(out_dir) / "f_%06d.jpg")]
     res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if res.returncode != 0:
         raise RuntimeError(res.stderr[-1200:])
@@ -115,15 +127,27 @@ def sample_frames(path, every, accurate, out_dir, width=320):
 
 def tile(frames_dir, start_idx, n, out_png):
     rows = math.ceil(n / COLS)
-    ffmpeg(["-start_number", str(start_idx), "-i", str(Path(frames_dir) / "f_%06d.jpg"),
-            "-vf", f"tile={COLS}x{rows}:padding=3:margin=3:color=black", "-frames:v", "1", str(out_png)])
+    ffmpeg(
+        [
+            "-start_number",
+            str(start_idx),
+            "-i",
+            str(Path(frames_dir) / "f_%06d.jpg"),
+            "-vf",
+            f"tile={COLS}x{rows}:padding=3:margin=3:color=black",
+            "-frames:v",
+            "1",
+            str(out_png),
+        ]
+    )
 
 
 def audio_heat(path, times, track=0):
     """Loudness-spike score (0-1) around each sampled time."""
     try:
         import numpy as np
-        from highlights import audio_curve, STEP
+
+        from highlights import STEP, audio_curve
     except Exception:
         return [0.0] * len(times)
     info = probe(path)
@@ -174,13 +198,24 @@ def cmd_index(a):
                 n = min(PER_SHEET, len(times) - k)
                 png = out / f"sheet_{k // PER_SHEET + 1:03d}.png"
                 tile(td, k + 1, n, png)
-                sheets.append({"n": k // PER_SHEET + 1, "file": str(png.resolve()),
-                               "times": times[k:k + n], "heat": max(heat[k:k + n]) if heat else 0,
-                               "reviewed": False})
-        data["videos"][vid] = {"path": str(v.resolve()), "duration": info["duration"],
-                               "fps": info["fps"], "size": f"{info['width']}x{info['height']}",
-                               "sample_every": round(med_gap, 2), "audio_tracks": len(tracks),
-                               "sheets": sheets}
+                sheets.append(
+                    {
+                        "n": k // PER_SHEET + 1,
+                        "file": str(png.resolve()),
+                        "times": times[k : k + n],
+                        "heat": max(heat[k : k + n]) if heat else 0,
+                        "reviewed": False,
+                    }
+                )
+        data["videos"][vid] = {
+            "path": str(v.resolve()),
+            "duration": info["duration"],
+            "fps": info["fps"],
+            "size": f"{info['width']}x{info['height']}",
+            "sample_every": round(med_gap, 2),
+            "audio_tracks": len(tracks),
+            "sheets": sheets,
+        }
         save_lib(a.lib, data)
         warn = ""
         if med_gap > a.every * 2.5:
@@ -196,8 +231,10 @@ def cmd_status(a):
     for vid, v in data["videos"].items():
         done = sum(s["reviewed"] for s in v["sheets"])
         clips = sum(1 for c in data["clips"] if c["video"] == vid)
-        print(f"{vid}: {Path(v['path']).name}, {fmt_t(v['duration'])}, sheets reviewed {done}/{len(v['sheets'])}, "
-              f"labeled clips {clips}")
+        print(
+            f"{vid}: {Path(v['path']).name}, {fmt_t(v['duration'])}, sheets reviewed {done}/{len(v['sheets'])}, "
+            f"labeled clips {clips}"
+        )
     print(f"Total labeled clips: {len(data['clips'])}")
 
 
@@ -208,9 +245,11 @@ def cmd_next(a):
     if not todo:
         print("Every sheet has been reviewed.")
         return
-    for heat, vid, s in todo[:a.n]:
-        print(f"{vid} sheet {s['n']}  {fmt_t(s['times'][0])}-{fmt_t(s['times'][-1])}  heat {heat:.2f}\n  {s['file']}\n"
-              f"  frame times (left->right, top->bottom): {', '.join(f'{t:.1f}' for t in s['times'])}")
+    for heat, vid, s in todo[: a.n]:
+        print(
+            f"{vid} sheet {s['n']}  {fmt_t(s['times'][0])}-{fmt_t(s['times'][-1])}  heat {heat:.2f}\n  {s['file']}\n"
+            f"  frame times (left->right, top->bottom): {', '.join(f'{t:.1f}' for t in s['times'])}"
+        )
     print(f"{len(todo)} sheets left to review.")
 
 
@@ -234,8 +273,16 @@ def cmd_add(a):
     n = 1 + sum(1 for c in data["clips"] if c["video"] == a.video)
     cid = f"{a.video}#{n}"
     tags = [t.strip().lower().replace(" ", "-") for t in a.tags.split(",") if t.strip()]
-    clip = {"id": cid, "video": a.video, "start": round(start, 2), "end": round(end, 2), "tags": tags,
-            "desc": a.desc, "quality": a.quality, "game": a.game}
+    clip = {
+        "id": cid,
+        "video": a.video,
+        "start": round(start, 2),
+        "end": round(end, 2),
+        "tags": tags,
+        "desc": a.desc,
+        "quality": a.quality,
+        "game": a.game,
+    }
     data["clips"].append(clip)
     save_lib(a.lib, data)
     print(f"Saved {cid}: {fmt_t(start)}-{fmt_t(end)} [{', '.join(tags)}]")
@@ -254,8 +301,29 @@ def cmd_search(a):
     if not data["clips"]:
         print("No labeled clips yet. Index footage, review sheets and add labels first.")
         return
-    tokens = [t for t in re.findall(r"[a-z0-9#\-]+", a.query.lower()) if t not in
-              {"the", "a", "an", "my", "with", "where", "i", "me", "clip", "moment", "that", "of", "in", "on", "and", "got"}]
+    tokens = [
+        t
+        for t in re.findall(r"[a-z0-9#\-]+", a.query.lower())
+        if t
+        not in {
+            "the",
+            "a",
+            "an",
+            "my",
+            "with",
+            "where",
+            "i",
+            "me",
+            "clip",
+            "moment",
+            "that",
+            "of",
+            "in",
+            "on",
+            "and",
+            "got",
+        }
+    ]
     scored = []
     for c in data["clips"]:
         hay_tags = set(c["tags"])
@@ -274,10 +342,12 @@ def cmd_search(a):
     if not scored:
         print("No match. Try other words, or check the unreviewed sheets (library.py next).")
         return
-    for s, c in scored[:a.top]:
+    for s, c in scored[: a.top]:
         v = data["videos"][c["video"]]
-        print(f"{c['id']}  score {s:.1f}  {Path(v['path']).name} {fmt_t(c['start'])}-{fmt_t(c['end'])}  "
-              f"q{c.get('quality')}  [{', '.join(c['tags'])}]\n    {c.get('desc', '')}")
+        print(
+            f"{c['id']}  score {s:.1f}  {Path(v['path']).name} {fmt_t(c['start'])}-{fmt_t(c['end'])}  "
+            f"q{c.get('quality')}  [{', '.join(c['tags'])}]\n    {c.get('desc', '')}"
+        )
 
 
 def cmd_zoom(a):
@@ -291,11 +361,27 @@ def cmd_zoom(a):
         font = find_font()
         label = ""
         if font:
-            label = (f",drawtext=fontfile='{ff_path(font)}':text='%{{pts\\:hms}}':fontsize=22:fontcolor=white:"
-                     f"box=1:boxcolor=black@0.6:boxborderw=4:x=6:y=6")
-        ffmpeg(["-ss", str(a.start), "-t", str(span), "-copyts", "-i", v["path"], "-an",
-                "-vf", f"fps=1/{a.step}:start_time={a.start},scale=320:-2{label}", "-q:v", "4",
-                str(Path(td) / "f_%06d.jpg")])
+            label = (
+                f",drawtext=fontfile='{ff_path(font)}':text='%{{pts\\:hms}}':fontsize=22:fontcolor=white:"
+                f"box=1:boxcolor=black@0.6:boxborderw=4:x=6:y=6"
+            )
+        ffmpeg(
+            [
+                "-ss",
+                str(a.start),
+                "-t",
+                str(span),
+                "-copyts",
+                "-i",
+                v["path"],
+                "-an",
+                "-vf",
+                f"fps=1/{a.step}:start_time={a.start},scale=320:-2{label}",
+                "-q:v",
+                "4",
+                str(Path(td) / "f_%06d.jpg"),
+            ]
+        )
         n = len(list(Path(td).glob("f_*.jpg")))
         if not n:
             die("No frames in that window.")
@@ -317,8 +403,31 @@ def cmd_cut(a):
     slug = "_".join(tags[:3]) or "clip"
     out = Path(a.out) if a.out else Path(a.lib) / "clips" / f"{vid}_{int(s)}-{int(e)}_{slug}.mp4"
     out.parent.mkdir(parents=True, exist_ok=True)
-    ffmpeg(["-ss", f"{s:.3f}", "-i", v["path"], "-t", f"{e - s:.3f}", "-map", "0:v:0", "-map", "0:a?",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-c:a", "aac", "-b:a", "192k", str(out)])
+    ffmpeg(
+        [
+            "-ss",
+            f"{s:.3f}",
+            "-i",
+            v["path"],
+            "-t",
+            f"{e - s:.3f}",
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a?",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "16",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            str(out),
+        ]
+    )
     print(f"{out.resolve()}  ({e - s:.1f}s)")
 
 
@@ -326,20 +435,46 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--lib", default="clip-library")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("index"); p.add_argument("inputs", nargs="+"); p.add_argument("--every", type=float, default=4.0)
-    p.add_argument("--accurate", action="store_true"); p.add_argument("--audio-track", type=int, default=0)
+    p = sub.add_parser("index")
+    p.add_argument("inputs", nargs="+")
+    p.add_argument("--every", type=float, default=4.0)
+    p.add_argument("--accurate", action="store_true")
+    p.add_argument("--audio-track", type=int, default=0)
     p.add_argument("--force", action="store_true")
     sub.add_parser("status")
-    p = sub.add_parser("next"); p.add_argument("--n", type=int, default=4)
-    p = sub.add_parser("reviewed"); p.add_argument("video"); p.add_argument("sheets")
-    p = sub.add_parser("add"); p.add_argument("video"); p.add_argument("start", type=float); p.add_argument("end", type=float)
-    p.add_argument("--tags", required=True); p.add_argument("--desc", default="")
-    p.add_argument("--quality", type=int, default=3, choices=range(1, 6)); p.add_argument("--game", default="")
-    p = sub.add_parser("search"); p.add_argument("query"); p.add_argument("--top", type=int, default=8)
-    p = sub.add_parser("zoom"); p.add_argument("video"); p.add_argument("start", type=float); p.add_argument("end", type=float)
+    p = sub.add_parser("next")
+    p.add_argument("--n", type=int, default=4)
+    p = sub.add_parser("reviewed")
+    p.add_argument("video")
+    p.add_argument("sheets")
+    p = sub.add_parser("add")
+    p.add_argument("video")
+    p.add_argument("start", type=float)
+    p.add_argument("end", type=float)
+    p.add_argument("--tags", required=True)
+    p.add_argument("--desc", default="")
+    p.add_argument("--quality", type=int, default=3, choices=range(1, 6))
+    p.add_argument("--game", default="")
+    p = sub.add_parser("search")
+    p.add_argument("query")
+    p.add_argument("--top", type=int, default=8)
+    p = sub.add_parser("zoom")
+    p.add_argument("video")
+    p.add_argument("start", type=float)
+    p.add_argument("end", type=float)
     p.add_argument("--step", type=float, default=0.5)
-    p = sub.add_parser("cut"); p.add_argument("target"); p.add_argument("--pad", type=float, default=0.5)
+    p = sub.add_parser("cut")
+    p.add_argument("target")
+    p.add_argument("--pad", type=float, default=0.5)
     p.add_argument("--out")
     a = ap.parse_args()
-    {"index": cmd_index, "status": cmd_status, "next": cmd_next, "reviewed": cmd_reviewed, "add": cmd_add,
-     "search": cmd_search, "zoom": cmd_zoom, "cut": cmd_cut}[a.cmd](a)
+    {
+        "index": cmd_index,
+        "status": cmd_status,
+        "next": cmd_next,
+        "reviewed": cmd_reviewed,
+        "add": cmd_add,
+        "search": cmd_search,
+        "zoom": cmd_zoom,
+        "cut": cmd_cut,
+    }[a.cmd](a)

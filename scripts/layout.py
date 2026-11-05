@@ -13,6 +13,7 @@ HUD regions (recipe "layout": {"fit": "hud", "hud": [...], "hud_place": "top"|"b
   custom:   {"x": 0.02, "y": 0.55, "w": 0.30, "h": 0.18, "scale": 0.6}   (fractions of the source)
 Presets are approximate defaults for standard HUD settings; check with `grid` first.
 """
+
 import argparse
 from pathlib import Path
 
@@ -67,9 +68,11 @@ def hud_graph(W, H, regions, place="top", effects=""):
     widths = [max(16, int(W * float(r["scale"])) // 2 * 2) for r in regions]
     maxw = max(widths) + 6
     for i, (r, ow) in enumerate(zip(regions, widths)):
-        g += (f";[h{i}]crop=iw*{r['w']}:ih*{r['h']}:iw*{r['x']}:ih*{r['y']},scale={ow}:-2,"
-              f"pad=iw+6:ih+6:3:3:color=black,format=rgba,"
-              f"pad={maxw}:ih+10:(ow-iw)/2:0:color=black@0[o{i}]")
+        g += (
+            f";[h{i}]crop=iw*{r['w']}:ih*{r['h']}:iw*{r['x']}:ih*{r['y']},scale={ow}:-2,"
+            f"pad=iw+6:ih+6:3:3:color=black,format=rgba,"
+            f"pad={maxw}:ih+10:(ow-iw)/2:0:color=black@0[o{i}]"
+        )
     if n > 1:
         g += ";" + "".join(f"[o{i}]" for i in range(n)) + f"vstack=inputs={n}[hud]"
     else:
@@ -91,7 +94,7 @@ def text_size(W, H, text, scale=1.0):
 def text_y(position, W, H):
     vertical = H > W
     top = f"h*{0.12 if vertical else 0.08}"
-    bottom = "h*0.70" if vertical else "h*0.80"   # vertical: stays above the app's caption/button zone
+    bottom = "h*0.70" if vertical else "h*0.80"  # vertical: stays above the app's caption/button zone
     return {"top": top, "center": "(h-text_h)/2", "bottom": bottom}.get(position, top)
 
 
@@ -109,11 +112,24 @@ def cmd_grid(a):
     if font:
         fp = ff_path(font)
         for i in range(1, 10):
-            lab += (f",drawtext=fontfile='{fp}':text='{i * 10}':fontsize=22:fontcolor=yellow:borderw=2:"
-                    f"x=w*{i / 10}+4:y=4,drawtext=fontfile='{fp}':text='{i * 10}':fontsize=22:fontcolor=yellow:"
-                    f"borderw=2:x=4:y=h*{i / 10}+4")
-    ffmpeg(["-ss", t, "-i", v, "-frames:v", "1", "-vf",
-            f"scale=1280:-2,drawgrid=w=iw/10:h=ih/10:t=1:c=yellow@0.6{lab}", str(a.out)])
+            lab += (
+                f",drawtext=fontfile='{fp}':text='{i * 10}':fontsize=22:fontcolor=yellow:borderw=2:"
+                f"x=w*{i / 10}+4:y=4,drawtext=fontfile='{fp}':text='{i * 10}':fontsize=22:fontcolor=yellow:"
+                f"borderw=2:x=4:y=h*{i / 10}+4"
+            )
+    ffmpeg(
+        [
+            "-ss",
+            t,
+            "-i",
+            v,
+            "-frames:v",
+            "1",
+            "-vf",
+            f"scale=1280:-2,drawgrid=w=iw/10:h=ih/10:t=1:c=yellow@0.6{lab}",
+            str(a.out),
+        ]
+    )
     print(f"{Path(a.out).resolve()}\n  Lines every 10% of width/height. Region = x,y (top-left) and w,h as fractions.")
 
 
@@ -121,21 +137,40 @@ def cmd_safe(a):
     v, t = _frame(a.frame)
     W, H = 1080, 1920
     top, bottom, left, right = SAFE[a.platform]
-    boxes = (f"drawbox=x=0:y=0:w={W}:h={top}:color=red@0.35:t=fill,"
-             f"drawbox=x=0:y={H - bottom}:w={W}:h={bottom}:color=red@0.35:t=fill,"
-             f"drawbox=x={W - right}:y=0:w={right}:h={H}:color=red@0.35:t=fill")
+    boxes = (
+        f"drawbox=x=0:y=0:w={W}:h={top}:color=red@0.35:t=fill,"
+        f"drawbox=x=0:y={H - bottom}:w={W}:h={bottom}:color=red@0.35:t=fill,"
+        f"drawbox=x={W - right}:y=0:w={right}:h={H}:color=red@0.35:t=fill"
+    )
     if left:
         boxes += f",drawbox=x=0:y=0:w={left}:h={H}:color=red@0.35:t=fill"
-    ffmpeg(["-ss", t, "-i", v, "-frames:v", "1", "-vf",
-            f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,{boxes}", str(a.out)])
-    print(f"{Path(a.out).resolve()}\n  Red = covered by {a.platform}'s buttons/captions. Keep text and HUD insets out of it.")
+    ffmpeg(
+        [
+            "-ss",
+            t,
+            "-i",
+            v,
+            "-frames:v",
+            "1",
+            "-vf",
+            f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,{boxes}",
+            str(a.out),
+        ]
+    )
+    print(
+        f"{Path(a.out).resolve()}\n  Red = covered by {a.platform}'s buttons/captions. Keep text and HUD insets out of it."
+    )
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("grid"); p.add_argument("frame"); p.add_argument("--out", default="grid.png")
-    p = sub.add_parser("safe"); p.add_argument("frame"); p.add_argument("--platform", choices=list(SAFE), default="tiktok")
+    p = sub.add_parser("grid")
+    p.add_argument("frame")
+    p.add_argument("--out", default="grid.png")
+    p = sub.add_parser("safe")
+    p.add_argument("frame")
+    p.add_argument("--platform", choices=list(SAFE), default="tiktok")
     p.add_argument("--out", default="safe.png")
     a = ap.parse_args()
     {"grid": cmd_grid, "safe": cmd_safe}[a.cmd](a)

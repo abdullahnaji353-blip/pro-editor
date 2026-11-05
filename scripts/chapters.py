@@ -9,6 +9,7 @@ the lines by reading the script for topic changes. Times follow the edit when --
 10 s are merged (YouTube needs 3+ chapters, each 10 s+), and --video embeds them into a copy of the
 file (no re-encode).
 """
+
 import argparse
 from pathlib import Path
 
@@ -85,10 +86,32 @@ if __name__ == "__main__":
         rows = [";FFMETADATA1"]
         for k, (t, title) in enumerate(merged):
             stop = merged[k + 1][0] if k + 1 < len(merged) else end
-            rows += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={int(t * 1000)}", f"END={int(stop * 1000)}",
-                     f"title={title}"]
+            rows += [
+                "[CHAPTER]",
+                "TIMEBASE=1/1000",
+                f"START={int(t * 1000)}",
+                f"END={int(stop * 1000)}",
+                f"title={title}",
+            ]
         meta.write_text("\n".join(rows) + "\n", encoding="utf-8")
-        ffmpeg(["-i", a.video, "-i", str(meta), "-map", "0", "-map_metadata", "1", "-map_chapters", "1",
-                "-c", "copy", "-movflags", "+faststart", str(out)])
+        ffmpeg(
+            [
+                "-i",
+                a.video,
+                "-i",
+                str(meta),
+                "-map",
+                "0",
+                "-map_metadata",
+                "1",
+                "-map_chapters",
+                "1",
+                "-c",
+                "copy",
+                "-movflags",
+                "+faststart",
+                str(out),
+            ]
+        )
         print(f"Chapters embedded -> {out}")
     print(f"Paste into the YouTube description -> {a.txt}")

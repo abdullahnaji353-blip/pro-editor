@@ -13,18 +13,19 @@ cuts-per-beat, brightness/saturation/contrast, white/black flash frequency, moti
 What it can NOT measure reliably (Claude should judge from the sheets): zoom/shake style,
 text style, speed ramps, overlays, specific transitions.
 """
+
 import argparse
 import re
-import subprocess
 import statistics as st
+import subprocess
 import tempfile
 from pathlib import Path
 
-from common import dec_args, ffmpeg, need, probe, run, save_json, die
+from common import dec_args, die, ffmpeg, need, probe, run, save_json
 
 CUT_FPS = 30
-HIST_THRESHOLD = 0.22   # min colour-histogram change for a cut
-LOCAL_RATIO = 3.0       # and it must stand out this much vs nearby frames (ignores fast camera motion)
+HIST_THRESHOLD = 0.22  # min colour-histogram change for a cut
+LOCAL_RATIO = 3.0  # and it must stand out this much vs nearby frames (ignores fast camera motion)
 
 
 def _histograms(path, w=64, h=36, bins=16, chunk=900):
@@ -32,9 +33,27 @@ def _histograms(path, w=64, h=36, bins=16, chunk=900):
     a 45-minute file never sits in memory at once."""
     import numpy as np
 
-    proc = subprocess.Popen([need("ffmpeg"), "-hide_banner", "-loglevel", "error", *dec_args(), "-i", str(path), "-an",
-                             "-vf", f"fps={CUT_FPS},scale={w}:{h}", "-pix_fmt", "rgb24", "-f", "rawvideo", "-"],
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *dec_args(),
+            "-i",
+            str(path),
+            "-an",
+            "-vf",
+            f"fps={CUT_FPS},scale={w}:{h}",
+            "-pix_fmt",
+            "rgb24",
+            "-f",
+            "rawvideo",
+            "-",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
     fsize = w * h * 3
     out = []
     while True:
@@ -43,8 +62,8 @@ def _histograms(path, w=64, h=36, bins=16, chunk=900):
         if n == 0:
             break
         fr = np.frombuffer(buf[: n * fsize], dtype=np.uint8).reshape(n, h * w, 3)
-        q = (fr // (256 // bins)).astype(np.int64)                           # bin per pixel and channel
-        offs = (np.arange(n)[:, None] * 3 + np.arange(3)[None, :]) * bins    # (n, 3) slot of each histogram
+        q = (fr // (256 // bins)).astype(np.int64)  # bin per pixel and channel
+        offs = (np.arange(n)[:, None] * 3 + np.arange(3)[None, :]) * bins  # (n, 3) slot of each histogram
         counts = np.bincount((q + offs[:, None, :]).ravel(), minlength=n * 3 * bins).reshape(n, 3, bins)
         out.append(counts / float(h * w))
     proc.wait()
@@ -70,7 +89,7 @@ def scene_cuts(path):
 
     d = np.concatenate([[0.0], np.abs(np.diff(hist, axis=0)).sum(axis=2).mean(axis=1) / 2])
     cuts = []
-    for i in np.nonzero(d >= HIST_THRESHOLD)[0]:   # only frames that could be cuts
+    for i in np.nonzero(d >= HIST_THRESHOLD)[0]:  # only frames that could be cuts
         if i < 1:
             continue
         lo, hi = max(1, i - 15), min(n, i + 16)
@@ -92,8 +111,22 @@ def frame_stats(path, fps=10, limit=None, keyframes_only=False):
     lim = ["-t", str(limit)] if limit else []
     if keyframes_only:  # much faster: only decodes keyframes (fine for average colour)
         lim += ["-skip_frame", "nokey"]
-    res = run([need("ffmpeg"), "-hide_banner", *dec_args(), *lim, "-i", str(path), "-an", "-vf",
-               f"fps={fps},scale=160:-2,signalstats,metadata=print:file=-", "-f", "null", "-"])
+    res = run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            *dec_args(),
+            *lim,
+            "-i",
+            str(path),
+            "-an",
+            "-vf",
+            f"fps={fps},scale=160:-2,signalstats,metadata=print:file=-",
+            "-f",
+            "null",
+            "-",
+        ]
+    )
     frames, cur = [], {}
     for line in res.stdout.splitlines():
         if line.startswith("frame:"):
@@ -127,12 +160,34 @@ def make_sheet(path, times, out_png, cols=4, width=320):
         return None
     with tempfile.TemporaryDirectory() as td:
         for i, t in enumerate(times):
-            ffmpeg(["-ss", f"{max(t, 0):.3f}", "-i", str(path), "-frames:v", "1",
-                    "-vf", f"scale={width}:-2", str(Path(td) / f"f{i:03d}.png")])
+            ffmpeg(
+                [
+                    "-ss",
+                    f"{max(t, 0):.3f}",
+                    "-i",
+                    str(path),
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    f"scale={width}:-2",
+                    str(Path(td) / f"f{i:03d}.png"),
+                ]
+            )
         n = len(times)
         rows = (n + cols - 1) // cols
-        ffmpeg(["-framerate", "1", "-i", str(Path(td) / "f%03d.png"), "-vf",
-                f"tile={cols}x{rows}:padding=4:margin=4:color=black", "-frames:v", "1", str(out_png)])
+        ffmpeg(
+            [
+                "-framerate",
+                "1",
+                "-i",
+                str(Path(td) / "f%03d.png"),
+                "-vf",
+                f"tile={cols}x{rows}:padding=4:margin=4:color=black",
+                "-frames:v",
+                "1",
+                str(out_png),
+            ]
+        )
     return str(out_png)
 
 
@@ -147,15 +202,24 @@ def analyze_one(path, out_dir):
     bounds = [0.0] + cuts + [dur]
     shots = [round(b - a, 3) for a, b in zip(bounds, bounds[1:]) if b - a > 0.04]
 
-    stats = {"file": info["path"], "duration": round(dur, 2), "width": info["width"],
-             "height": info["height"], "fps": info["fps"],
-             "aspect": "9:16" if info["height"] > info["width"] * 1.3 else
-                       "1:1" if abs(info["height"] - info["width"]) < info["width"] * 0.1 else "16:9",
-             "cuts": cuts, "num_shots": len(shots),
-             "median_shot_sec": round(st.median(shots), 3) if shots else dur,
-             "mean_shot_sec": round(st.mean(shots), 3) if shots else dur,
-             "shortest_shot_sec": min(shots) if shots else dur,
-             "cuts_per_sec": round(len(cuts) / dur, 3) if dur else 0}
+    stats = {
+        "file": info["path"],
+        "duration": round(dur, 2),
+        "width": info["width"],
+        "height": info["height"],
+        "fps": info["fps"],
+        "aspect": "9:16"
+        if info["height"] > info["width"] * 1.3
+        else "1:1"
+        if abs(info["height"] - info["width"]) < info["width"] * 0.1
+        else "16:9",
+        "cuts": cuts,
+        "num_shots": len(shots),
+        "median_shot_sec": round(st.median(shots), 3) if shots else dur,
+        "mean_shot_sec": round(st.mean(shots), 3) if shots else dur,
+        "shortest_shot_sec": min(shots) if shots else dur,
+        "cuts_per_sec": round(len(cuts) / dur, 3) if dur else 0,
+    }
 
     # beat relationship
     stats.update({"tempo_bpm": None, "beat_sync_pct": None, "cut_every_beats": None})
@@ -189,13 +253,15 @@ def analyze_one(path, out_dir):
         sat = [f.get("SATAVG", 0) for f in frames]
         con = [f.get("YHIGH", 0) - f.get("YLOW", 0) for f in frames]
         dif = [f.get("YDIF", 0) for f in frames[1:]] or [0]
-        stats.update({
-            "brightness": round(st.mean(ya) / 255, 3),
-            "saturation": round(st.mean(sat) / 128, 3),
-            "contrast": round(st.mean(con) / 255, 3),
-            "motion_intensity": round(st.mean(dif) / 255, 4),
-            "flashes_per_min": round(count_flashes(frames) / (dur / 60), 2) if dur else 0,
-        })
+        stats.update(
+            {
+                "brightness": round(st.mean(ya) / 255, 3),
+                "saturation": round(st.mean(sat) / 128, 3),
+                "contrast": round(st.mean(con) / 255, 3),
+                "motion_intensity": round(st.mean(dif) / 255, 4),
+                "flashes_per_min": round(count_flashes(frames) / (dur / 60), 2) if dur else 0,
+            }
+        )
 
     stem = Path(path).stem
     mids = [round(a + (b - a) / 2, 3) for a, b in zip(bounds, bounds[1:])][:16]
@@ -259,8 +325,10 @@ if __name__ == "__main__":
     for r in a.refs:
         print(f"Analyzing {r} ...")
         s = analyze_one(r, a.out_dir)
-        print(f"  {s['num_shots']} shots, median {s['median_shot_sec']}s, beat sync {s['beat_sync_pct']}% "
-              f"(random would be {s.get('random_sync_pct')}%), tempo {s['tempo_bpm']}")
+        print(
+            f"  {s['num_shots']} shots, median {s['median_shot_sec']}s, beat sync {s['beat_sync_pct']}% "
+            f"(random would be {s.get('random_sync_pct')}%), tempo {s['tempo_bpm']}"
+        )
         stats.append(s)
     recipe = merge(stats, a.name)
     save_json(recipe, Path(a.out_dir) / "recipe.json")

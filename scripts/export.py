@@ -12,30 +12,47 @@ Platforms: tiktok, reels, shorts (9:16 1080x1920), square (1:1), feed (4:5 1080x
 --fit blur  keeps the whole frame over a blurred copy of itself.
 --transcribe needs the optional faster-whisper package (speech captions; useless for music-only edits).
 """
+
 import argparse
 import shutil
 from pathlib import Path
 
-from common import (blur_radius, die, ff_path, ffmpeg, find_font, frame_size, normalize_loudness, probe,
-                    resolve_res, safe_copy)
+from common import (
+    blur_radius,
+    die,
+    ff_path,
+    ffmpeg,
+    find_font,
+    frame_size,
+    normalize_loudness,
+    probe,
+    resolve_res,
+    safe_copy,
+)
 
 PLATFORMS = {
-    "tiktok": ("9:16", 1080, 1920, 600), "reels": ("9:16", 1080, 1920, 180),
-    "shorts": ("9:16", 1080, 1920, 180), "square": ("1:1", 1080, 1080, None),
-    "feed": ("4:5", 1080, 1350, None), "youtube": ("16:9", 1920, 1080, None),
+    "tiktok": ("9:16", 1080, 1920, 600),
+    "reels": ("9:16", 1080, 1920, 180),
+    "shorts": ("9:16", 1080, 1920, 180),
+    "square": ("1:1", 1080, 1080, None),
+    "feed": ("4:5", 1080, 1350, None),
+    "youtube": ("16:9", 1920, 1080, None),
 }
 
 
 def fit_graph(W, H, fit, hud=None, place="bottom"):
     if fit == "hud":
         from layout import hud_graph, resolve_regions
+
         if not hud:
             die("--fit hud needs --hud regions (presets or x,y,w,h[,scale])")
         return "[0:v]" + hud_graph(W, H, resolve_regions(hud), place)
     if fit == "blur":
-        return (f"[0:v]split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-                f"boxblur={blur_radius(W, H)}:2[bgb];[fg]scale={W}:{H}:force_original_aspect_ratio=decrease[fgs];"
-                f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1")
+        return (
+            f"[0:v]split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+            f"boxblur={blur_radius(W, H)}:2[bgb];[fg]scale={W}:{H}:force_original_aspect_ratio=decrease[fgs];"
+            f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1"
+        )
     return f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
 
 
@@ -44,20 +61,23 @@ def parse_text(spec):
     if len(parts) < 2 or "-" not in parts[1]:
         die(f"Bad --text '{spec}'. Use TEXT@START-END or TEXT@START-END@top")
     s, e = parts[1].split("-", 1)
-    return {"text": parts[0], "start": float(s), "end": float(e),
-            "position": parts[2] if len(parts) > 2 else "center"}
+    return {"text": parts[0], "start": float(s), "end": float(e), "position": parts[2] if len(parts) > 2 else "center"}
 
 
 def drawtext(o, W, H):
     font = find_font()
     txt = o["text"].replace("\\", "\\\\").replace(":", "\\:").replace("'", "’")
     from layout import text_y
+
     y = text_y(o["position"], W, H)
     fontopt = f"fontfile='{ff_path(font)}':" if font else ""
     from layout import text_size
+
     size = text_size(W, H, o["text"], 0.9)
-    return (f"drawtext={fontopt}text='{txt}':fontsize={size}:fontcolor=white:borderw=5:"
-            f"bordercolor=black:x=(w-text_w)/2:y={y}:enable='between(t,{o['start']},{o['end']})'")
+    return (
+        f"drawtext={fontopt}text='{txt}':fontsize={size}:fontcolor=white:borderw=5:"
+        f"bordercolor=black:x=(w-text_w)/2:y={y}:enable='between(t,{o['start']},{o['end']})'"
+    )
 
 
 def watermark(tag, W, H):
@@ -65,8 +85,10 @@ def watermark(tag, W, H):
     font = find_font()
     txt = tag.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\u2019")
     fontopt = f"fontfile='{ff_path(font)}':" if font else ""
-    return (f"drawtext={fontopt}text='{txt}':fontsize={int(min(W, H) * 0.04)}:fontcolor=white@0.7:"
-            f"borderw=2:bordercolor=black@0.5:x=w*0.05:y=h*0.06")
+    return (
+        f"drawtext={fontopt}text='{txt}':fontsize={int(min(W, H) * 0.04)}:fontcolor=white@0.7:"
+        f"borderw=2:bordercolor=black@0.5:x=w*0.05:y=h*0.06"
+    )
 
 
 def transcribe(src, srt_out):
@@ -94,8 +116,12 @@ if __name__ == "__main__":
     ap.add_argument("input")
     ap.add_argument("--platforms", nargs="+", default=["tiktok"], choices=list(PLATFORMS))
     ap.add_argument("--fit", choices=["crop", "blur", "hud"], default="blur")
-    ap.add_argument("--res", default="1080", help="YouTube and Shorts output resolution: 1080, 1440, 2160/4k or "
-                    "'source' (TikTok/Reels/feed stay 1080p: they downscale anything bigger)")
+    ap.add_argument(
+        "--res",
+        default="1080",
+        help="YouTube and Shorts output resolution: 1080, 1440, 2160/4k or "
+        "'source' (TikTok/Reels/feed stay 1080p: they downscale anything bigger)",
+    )
     ap.add_argument("--hud", nargs="*", help="HUD regions for --fit hud: presets or x,y,w,h[,scale]")
     ap.add_argument("--hud-place", choices=["top", "bottom"], default="bottom")
     ap.add_argument("--out-dir", default="exports")
@@ -118,8 +144,27 @@ if __name__ == "__main__":
     if a.trim:  # trim first so caption/text times are relative to the trimmed clip
         s, e = (float(x) for x in a.trim.split("-", 1))
         trimmed = out_dir / f"_{stem}_trim_tmp.mp4"
-        ffmpeg(["-ss", str(s), "-i", a.input, "-t", str(e - s), "-c:v", "libx264", "-preset", "veryfast",
-                "-crf", "16", "-c:a", "aac", "-b:a", "256k", str(trimmed)])
+        ffmpeg(
+            [
+                "-ss",
+                str(s),
+                "-i",
+                a.input,
+                "-t",
+                str(e - s),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "16",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "256k",
+                str(trimmed),
+            ]
+        )
         a.input = str(trimmed)
         info = probe(a.input)
     srt = a.srt
@@ -132,6 +177,7 @@ if __name__ == "__main__":
 
     yt_res = resolve_res(a.res, [a.input])
     import tempfile as _tf
+
     _tmp = _tf.TemporaryDirectory()
     tmpdir = _tmp.name
     done = {}
@@ -152,8 +198,10 @@ if __name__ == "__main__":
         chain = fit_graph(W, H, a.fit if (W < H or a.fit != "hud") else "blur", regs, a.hud_place)
         if srt:
             srt = str(safe_copy(srt, tmpdir, "subs.srt"))
-            style = (f"FontName=Arial,FontSize={14 if H > W else 18},Bold=1,PrimaryColour=&H00FFFFFF,"
-                     f"OutlineColour=&H00000000,BorderStyle=1,Outline=3,Alignment=2,MarginV={int(H * 0.06 / 2)}")
+            style = (
+                f"FontName=Arial,FontSize={14 if H > W else 18},Bold=1,PrimaryColour=&H00FFFFFF,"
+                f"OutlineColour=&H00000000,BorderStyle=1,Outline=3,Alignment=2,MarginV={int(H * 0.06 / 2)}"
+            )
             chain += f",subtitles='{ff_path(srt)}':force_style='{style}'"
         for o in texts:
             chain += "," + drawtext(o, W, H)
@@ -164,8 +212,19 @@ if __name__ == "__main__":
         if info["has_audio"]:
             args += ["-map", "0:a:0", "-c:a", "aac", "-b:a", "192k", "-ar", "48000"]
 
-        args += ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-profile:v", "high",
-                 "-movflags", "+faststart", str(out)]
+        args += [
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "18",
+            "-profile:v",
+            "high",
+            "-movflags",
+            "+faststart",
+            str(out),
+        ]
         ffmpeg(args, hw=True)
         if info["has_audio"] and not a.no_normalize:
             normalize_loudness(out, a.lufs)

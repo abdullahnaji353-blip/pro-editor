@@ -1,4 +1,5 @@
 """Shared helpers for the pro-editor scripts: ffmpeg/ffprobe wrappers, JSON IO, font lookup."""
+
 import json
 import os
 import platform
@@ -72,9 +73,27 @@ def hw_encoder():
         pass
     found = None
     for c in cands:
-        r = subprocess.run([need("ffmpeg"), "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-                            "testsrc2=s=640x360:r=30:d=0.5", "-pix_fmt", "yuv420p", "-c:v", c, "-f", "null", "-"],
-                           capture_output=True, text=True)
+        r = subprocess.run(
+            [
+                need("ffmpeg"),
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=s=640x360:r=30:d=0.5",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:v",
+                c,
+                "-f",
+                "null",
+                "-",
+            ],
+            capture_output=True,
+            text=True,
+        )
         if r.returncode == 0:
             found = c
             break
@@ -98,13 +117,37 @@ def _hw_video_args(enc, crf, preset):
     fast = preset in ("ultrafast", "superfast", "veryfast", "faster", "fast")
     q = int(round(float(crf))) + 1
     if enc == "h264_nvenc":
-        return ["-c:v", enc, "-preset", "p2" if fast else "p5", "-rc", "vbr", "-cq", str(q), "-b:v", "0",
-                "-profile:v", "high"]
+        return [
+            "-c:v",
+            enc,
+            "-preset",
+            "p2" if fast else "p5",
+            "-rc",
+            "vbr",
+            "-cq",
+            str(q),
+            "-b:v",
+            "0",
+            "-profile:v",
+            "high",
+        ]
     if enc == "h264_qsv":
         return ["-c:v", enc, "-preset", "veryfast" if fast else "medium", "-global_quality", str(q)]
     if enc == "h264_amf":
-        return ["-c:v", enc, "-quality", "speed" if fast else "quality", "-rc", "cqp",
-                "-qp_i", str(q), "-qp_p", str(q + 2), "-qp_b", str(q + 4)]
+        return [
+            "-c:v",
+            enc,
+            "-quality",
+            "speed" if fast else "quality",
+            "-rc",
+            "cqp",
+            "-qp_i",
+            str(q),
+            "-qp_p",
+            str(q + 2),
+            "-qp_b",
+            str(q + 4),
+        ]
     if enc == "h264_videotoolbox":
         return ["-c:v", enc, "-q:v", str(max(20, min(90, 100 - q * 2))), "-allow_sw", "1"]
     return None
@@ -159,11 +202,17 @@ def ffmpeg(args, hw=False):
 
 def probe(path):
     """Return dict with duration, width, height, fps, has_audio for a media file."""
-    res = run([need("ffprobe"), "-v", "error", "-print_format", "json",
-               "-show_format", "-show_streams", str(path)])
+    res = run([need("ffprobe"), "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)])
     data = json.loads(res.stdout)
-    info = {"path": str(Path(path).resolve()), "duration": float(data["format"].get("duration", 0) or 0),
-            "width": None, "height": None, "fps": None, "has_audio": False, "has_video": False}
+    info = {
+        "path": str(Path(path).resolve()),
+        "duration": float(data["format"].get("duration", 0) or 0),
+        "width": None,
+        "height": None,
+        "fps": None,
+        "has_audio": False,
+        "has_video": False,
+    }
     for s in data.get("streams", []):
         if s.get("codec_type") == "video" and not info["has_video"]:
             if s.get("disposition", {}).get("attached_pic"):
@@ -185,26 +234,44 @@ def probe(path):
 
 def extract_audio(src, dst_wav, sr=22050, track=0, af=None):
     extra = ["-af", af] if af else []
-    ffmpeg(["-i", str(src), "-map", f"0:a:{track}", "-vn", *extra, "-ac", "1", "-ar", str(sr), "-f", "wav",
-            str(dst_wav)])
+    ffmpeg(
+        ["-i", str(src), "-map", f"0:a:{track}", "-vn", *extra, "-ac", "1", "-ar", str(sr), "-f", "wav", str(dst_wav)]
+    )
     return dst_wav
 
 
 def audio_tracks(path):
     """List audio streams with their titles (OBS multi-track recordings name them)."""
-    res = run([need("ffprobe"), "-v", "error", "-select_streams", "a", "-show_entries",
-               "stream=index,channels:stream_tags=title,handler_name", "-of", "json", str(path)])
+    res = run(
+        [
+            need("ffprobe"),
+            "-v",
+            "error",
+            "-select_streams",
+            "a",
+            "-show_entries",
+            "stream=index,channels:stream_tags=title,handler_name",
+            "-of",
+            "json",
+            str(path),
+        ]
+    )
     out = []
     for i, s in enumerate(json.loads(res.stdout).get("streams", [])):
         tags = s.get("tags", {})
-        out.append({"track": i, "channels": s.get("channels"),
-                    "title": tags.get("title") or ("" if tags.get("handler_name", "").endswith("Handler")
-                                                    else tags.get("handler_name", ""))})
+        out.append(
+            {
+                "track": i,
+                "channels": s.get("channels"),
+                "title": tags.get("title")
+                or ("" if tags.get("handler_name", "").endswith("Handler") else tags.get("handler_name", "")),
+            }
+        )
     return out
 
 
 def load_json(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -218,9 +285,24 @@ def save_json(obj, path):
 def measure_lufs(path):
     """Integrated loudness (LUFS) and true peak (dBFS) of a file's first audio track."""
     import re
-    res = run([need("ffmpeg"), "-hide_banner", "-nostats", "-i", str(path), "-map", "0:a:0",
-               "-af", "ebur128=peak=true", "-f", "null", "-"])
-    tail = res.stderr[res.stderr.rfind("Summary:"):]
+
+    res = run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-nostats",
+            "-i",
+            str(path),
+            "-map",
+            "0:a:0",
+            "-af",
+            "ebur128=peak=true",
+            "-f",
+            "null",
+            "-",
+        ]
+    )
+    tail = res.stderr[res.stderr.rfind("Summary:") :]
     i = re.search(r"I:\s+(-?[\d.]+) LUFS", tail)
     pk = re.search(r"Peak:\s+(-?[\d.]+) dBFS", tail)
     return (float(i.group(1)) if i else None, float(pk.group(1)) if pk else None)
@@ -240,9 +322,29 @@ def normalize_loudness(path, target=-14.0, ceiling_db=-2.0):
     limit = 10 ** (ceiling_db / 20)
     result = lufs
     for _ in range(3):
-        ffmpeg(["-i", str(path), "-map", "0", "-c:v", "copy", "-c:s", "copy",
-                "-af", f"volume={gain:.2f}dB,alimiter=limit={limit:.3f}:level=disabled",
-                "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-movflags", "+faststart", str(tmp)])
+        ffmpeg(
+            [
+                "-i",
+                str(path),
+                "-map",
+                "0",
+                "-c:v",
+                "copy",
+                "-c:s",
+                "copy",
+                "-af",
+                f"volume={gain:.2f}dB,alimiter=limit={limit:.3f}:level=disabled",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "256k",
+                "-ar",
+                "48000",
+                "-movflags",
+                "+faststart",
+                str(tmp),
+            ]
+        )
         result = measure_lufs(tmp)[0]
         if result is None or abs(target - result) <= 0.5 or gain > 20:
             break
@@ -273,12 +375,17 @@ def find_font():
         windir = os.environ.get("WINDIR", "C:/Windows")
         candidates += [f"{windir}/Fonts/arialbd.ttf", f"{windir}/Fonts/impact.ttf", f"{windir}/Fonts/arial.ttf"]
     elif system == "Darwin":
-        candidates += ["/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-                       "/System/Library/Fonts/Supplemental/Impact.ttf",
-                       "/Library/Fonts/Arial Bold.ttf", "/System/Library/Fonts/Helvetica.ttc"]
-    candidates += ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                   "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-                   "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"]
+        candidates += [
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/System/Library/Fonts/Supplemental/Impact.ttf",
+            "/Library/Fonts/Arial Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+        ]
+    candidates += [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+    ]
     for c in candidates:
         if Path(c).exists():
             return c
@@ -347,6 +454,7 @@ def safe_copy(p, folder, name=None):
     """Copy a file into a temp folder under a plain name, for ffmpeg filters that take a path
     (subtitles, fonts): quotes, colons and emoji in real folder names break filter parsing."""
     import shutil as _sh
+
     dst = Path(folder) / (name or ("f" + Path(p).suffix.lower()))
     _sh.copyfile(p, dst)
     return dst
@@ -355,6 +463,7 @@ def safe_copy(p, folder, name=None):
 def smooth(x, k):
     """Moving average that keeps the input length even when the input is shorter than the window."""
     import numpy as np
+
     x = np.asarray(x, dtype=float)
     k = max(1, min(int(k), len(x)))
     return np.convolve(x, np.ones(k) / k, mode="same")

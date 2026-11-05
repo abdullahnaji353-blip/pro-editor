@@ -9,6 +9,7 @@ strong - noisy rooms / phone mics. Can sound a bit processed; preview it.
 Video is copied untouched; only the audio is processed. Keeps your hype moments loud (the
 compressor is gentle, and a limiter catches peaks instead of flattening everything).
 """
+
 import argparse
 from pathlib import Path
 
@@ -24,9 +25,12 @@ LEVELS = {  # denoise amount (dB), how far pauses are pushed down (dB), compress
 def measure(path, track):
     """Noise floor and speech level (dBFS) from 50 ms windows: quiet 10th vs loud 90th percentile."""
     import tempfile
+
     import numpy as np
     import soundfile as sf
+
     from common import extract_audio
+
     with tempfile.TemporaryDirectory() as td:
         wav = extract_audio(path, Path(td) / "a.wav", sr=16000, track=track)
         y, sr = sf.read(str(wav))
@@ -34,7 +38,7 @@ def measure(path, track):
         y = y.mean(axis=1)
     n = int(sr * 0.05)
     frames = y[: len(y) // n * n].reshape(-1, n)
-    rms = 20 * np.log10(np.sqrt((frames ** 2).mean(axis=1)) + 1e-9)
+    rms = 20 * np.log10(np.sqrt((frames**2).mean(axis=1)) + 1e-9)
     return float(np.percentile(rms, 10)), float(np.percentile(rms, 90))
 
 
@@ -73,8 +77,29 @@ if __name__ == "__main__":
     chain = chain_for(a.strength, noise_db, speech_db) + ",alimiter=limit=0.89"
     print(f"Noise floor {noise_db:.0f} dB, speech {speech_db:.0f} dB")
     if info["has_video"]:
-        ffmpeg(["-i", a.input, "-map", "0:v:0", "-map", f"0:a:{a.audio_track}", "-c:v", "copy", "-af", chain,
-                "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", str(out)])
+        ffmpeg(
+            [
+                "-i",
+                a.input,
+                "-map",
+                "0:v:0",
+                "-map",
+                f"0:a:{a.audio_track}",
+                "-c:v",
+                "copy",
+                "-af",
+                chain,
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-ar",
+                "48000",
+                "-movflags",
+                "+faststart",
+                str(out),
+            ]
+        )
     else:
         ffmpeg(["-i", a.input, "-map", f"0:a:{a.audio_track}", "-af", chain, "-ar", "48000", str(out)])
     got = normalize_loudness(out, a.lufs) if info["has_video"] else None

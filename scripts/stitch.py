@@ -23,6 +23,7 @@ project.json:
 - sections are cached in --work-dir: re-running only re-renders sections whose settings changed.
 - writes chapters.txt (paste into the YouTube description) and embeds chapters in the MP4.
 """
+
 import argparse
 import hashlib
 import json
@@ -30,17 +31,33 @@ import subprocess
 import sys
 from pathlib import Path
 
-from common import (blur_radius, concat_line, die, frame_size, preview_size, resolve_res, need, ff_path, ffmpeg, find_font, load_json, normalize_loudness, probe,
-                    save_json)
+from common import (
+    blur_radius,
+    concat_line,
+    die,
+    ff_path,
+    ffmpeg,
+    find_font,
+    frame_size,
+    load_json,
+    need,
+    normalize_loudness,
+    preview_size,
+    probe,
+    resolve_res,
+    save_json,
+)
 
 HERE = Path(__file__).resolve().parent
 
 
 def fit_graph(W, H, fit):
     if fit == "blur":
-        return (f"split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-                f"boxblur={blur_radius(W, H)}:2[bgb];[fg]scale={W}:{H}:force_original_aspect_ratio=decrease[fgs];"
-                f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2")
+        return (
+            f"split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+            f"boxblur={blur_radius(W, H)}:2[bgb];[fg]scale={W}:{H}:force_original_aspect_ratio=decrease[fgs];"
+            f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2"
+        )
     return f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}"
 
 
@@ -49,10 +66,13 @@ def title_filter(text, W, H, dur=2.5):
     txt = text.replace("\\", "\\\\").replace(":", "\\:").replace("'", "’")
     fontopt = f"fontfile='{ff_path(font)}':" if font else ""
     from layout import text_size
+
     size = text_size(W, H, text)
-    return (f"drawtext={fontopt}text='{txt}':fontsize={size}:fontcolor=white:borderw=6:bordercolor=black:"
-            f"x=(w-text_w)/2:y=h*0.12:alpha='if(lt(t,0.3),t/0.3,if(lt(t,{dur - 0.4}),1,max(0,({dur}-t)/0.4)))':"
-            f"enable='lt(t,{dur})'")
+    return (
+        f"drawtext={fontopt}text='{txt}':fontsize={size}:fontcolor=white:borderw=6:bordercolor=black:"
+        f"x=(w-text_w)/2:y=h*0.12:alpha='if(lt(t,0.3),t/0.3,if(lt(t,{dur - 0.4}),1,max(0,({dur}-t)/0.4)))':"
+        f"enable='lt(t,{dur})'"
+    )
 
 
 def section_key(sec, fmt, preview):
@@ -70,10 +90,27 @@ def render_montage(sec, fmt, out_raw, preview, work):
     recipe["format"] = dict(fmt)  # project size/fps win
     rpath = work / f"_recipe_{out_raw.stem}.json"
     save_json(recipe, rpath)
-    cmd = [sys.executable, str(HERE / "build_montage.py"), "--song", sec["song"], "--recipe", str(rpath),
-           "--song-start", str(sec.get("song_start", 0)), "--fit", sec.get("fit", "crop"),
-           "--fade-out", "0", "--exact-length", "--out", str(out_raw),
-           "--plan-out", str(work / f"{out_raw.stem}_plan.json"), "--xml-out", str(work / f"{out_raw.stem}.xml")]
+    cmd = [
+        sys.executable,
+        str(HERE / "build_montage.py"),
+        "--song",
+        sec["song"],
+        "--recipe",
+        str(rpath),
+        "--song-start",
+        str(sec.get("song_start", 0)),
+        "--fit",
+        sec.get("fit", "crop"),
+        "--fade-out",
+        "0",
+        "--exact-length",
+        "--out",
+        str(out_raw),
+        "--plan-out",
+        str(work / f"{out_raw.stem}_plan.json"),
+        "--xml-out",
+        str(work / f"{out_raw.stem}.xml"),
+    ]
     if sec.get("length"):
         cmd += ["--length", str(sec["length"])]
     if sec.get("clips"):
@@ -101,7 +138,9 @@ def finalize(src, out, W, H, fps, sec, transition, preview, is_first, is_last, r
             inputs += ["-to", str(float(end))]
         inputs += ["-i", sec["source"]]
         dur = (float(end) if end else info["duration"]) - start
-        vchain.append(fit_graph(W, H, sec.get("fit", "blur" if (info["height"] or 0) > (info["width"] or 1) else "crop")))
+        vchain.append(
+            fit_graph(W, H, sec.get("fit", "blur" if (info["height"] or 0) > (info["width"] or 1) else "crop"))
+        )
     else:
         inputs += ["-i", str(src)]
         dur = info["duration"]
@@ -133,13 +172,17 @@ def finalize(src, out, W, H, fps, sec, transition, preview, is_first, is_last, r
         duck = sec.get("duck", True)
         if duck:
             # music sits ~18 dB under, then ducks a further ~6 dB whenever voice/game sound is active
-            graph += (f";[sa]asplit=2[sa1][key0];[key0]highpass=f=250,lowpass=f=3400[key]"  # key on voice band
-                      f";[1:a]aresample=48000,aformat=channel_layouts=stereo,volume={mv}[mb0]"
-                      f";[mb0][key]sidechaincompress=threshold=0.05:ratio=4:attack=15:release=450:makeup=1[mb]"
-                      f";[sa1][mb]amix=inputs=2:duration=first:normalize=0[mix]")
+            graph += (
+                f";[sa]asplit=2[sa1][key0];[key0]highpass=f=250,lowpass=f=3400[key]"  # key on voice band
+                f";[1:a]aresample=48000,aformat=channel_layouts=stereo,volume={mv}[mb0]"
+                f";[mb0][key]sidechaincompress=threshold=0.05:ratio=4:attack=15:release=450:makeup=1[mb]"
+                f";[sa1][mb]amix=inputs=2:duration=first:normalize=0[mix]"
+            )
         else:
-            graph += (f";[1:a]aresample=48000,aformat=channel_layouts=stereo,volume={mv}[mb]"
-                      f";[sa][mb]amix=inputs=2:duration=first:normalize=0[mix]")
+            graph += (
+                f";[1:a]aresample=48000,aformat=channel_layouts=stereo,volume={mv}[mb]"
+                f";[sa][mb]amix=inputs=2:duration=first:normalize=0[mix]"
+            )
         last = "mix"
     else:
         last = "sa"
@@ -151,9 +194,39 @@ def finalize(src, out, W, H, fps, sec, transition, preview, is_first, is_last, r
     graph += f";[{last}]{','.join(achain)}[a]"
 
     preset, crf = ("veryfast", "26") if preview else ("medium", "18")
-    ffmpeg([*inputs, "-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-t", f"{dur:.3f}",
-            "-c:v", "libx264", "-preset", preset, "-crf", crf, "-r", str(fps), "-g", str(fps * 2),
-            "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", str(out)], hw=True)
+    ffmpeg(
+        [
+            *inputs,
+            "-filter_complex",
+            graph,
+            "-map",
+            "[v]",
+            "-map",
+            "[a]",
+            "-t",
+            f"{dur:.3f}",
+            "-c:v",
+            "libx264",
+            "-preset",
+            preset,
+            "-crf",
+            crf,
+            "-r",
+            str(fps),
+            "-g",
+            str(fps * 2),
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
+            str(out),
+        ],
+        hw=True,
+    )
     normalize_loudness(out, float(sec.get("lufs", -14)))
     return probe(out)["duration"]
 
@@ -177,15 +250,16 @@ if __name__ == "__main__":
     proj = load_json(a.project)
     fmt = {"aspect": "16:9", "fps": 60, **(proj.get("format") or {})}
     sections = proj.get("sections") or die("project has no sections")
-    srcs = [s.get("source") for s in sections if s.get("source")] + \
-        [c for s in sections for c in (s.get("clips") or []) if Path(c).is_file()]
+    srcs = [s.get("source") for s in sections if s.get("source")] + [
+        c for s in sections for c in (s.get("clips") or []) if Path(c).is_file()
+    ]
     fmt["resolution"] = resolve_res(fmt.get("resolution", 1080), srcs)
     W, H = frame_size(fmt["aspect"], fmt["resolution"])
     fps = int(fmt["fps"])
     if a.preview:
         (W, H), fps = preview_size(W, H), 30
     transition = proj.get("transition") or {"type": "fade", "duration": 0.4}
-    if isinstance(transition, str):          # "fade" is fine too, not just {"type": "fade"}
+    if isinstance(transition, str):  # "fade" is fine too, not just {"type": "fade"}
         transition = {"type": transition, "duration": 0.4}
     if transition.get("type") not in ("cut", "fade", "flash"):
         die(f"Unknown transition '{transition.get('type')}'. Use cut, fade or flash.")
@@ -227,7 +301,13 @@ if __name__ == "__main__":
     for sec, d in zip(sections, durations):
         title = sec.get("title") or f"Part {len(chapters) + 1}"
         chapters.append(f"{ts(t)} {title}")
-        meta += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={int(t * 1000)}", f"END={int((t + d) * 1000)}", f"title={title}"]
+        meta += [
+            "[CHAPTER]",
+            "TIMEBASE=1/1000",
+            f"START={int(t * 1000)}",
+            f"END={int((t + d) * 1000)}",
+            f"title={title}",
+        ]
         t += d
     out = Path(a.out)
     chap_txt = out.with_name(out.stem + "_chapters.txt")
@@ -241,18 +321,81 @@ if __name__ == "__main__":
     # file is clean
     sigs = set()
     for f in finals:
-        r = subprocess.run([need("ffprobe"), "-v", "error", "-select_streams", "v:0", "-show_entries",
-                            "stream=codec_name,profile,pix_fmt,width,height,r_frame_rate:stream_tags=encoder",
-                            "-of", "csv=p=0", str(f)], capture_output=True, text=True)
+        r = subprocess.run(
+            [
+                need("ffprobe"),
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_name,profile,pix_fmt,width,height,r_frame_rate:stream_tags=encoder",
+                "-of",
+                "csv=p=0",
+                str(f),
+            ],
+            capture_output=True,
+            text=True,
+        )
         sigs.add(r.stdout.strip())
     if len(sigs) <= 1:
-        ffmpeg(["-f", "concat", "-safe", "0", "-i", str(lst), "-i", str(metaf), "-map", "0", "-map_metadata", "1",
-                "-map_chapters", "1", "-c", "copy", "-movflags", "+faststart", str(out)])
+        ffmpeg(
+            [
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(lst),
+                "-i",
+                str(metaf),
+                "-map",
+                "0",
+                "-map_metadata",
+                "1",
+                "-map_chapters",
+                "1",
+                "-c",
+                "copy",
+                "-movflags",
+                "+faststart",
+                str(out),
+            ]
+        )
     else:
         print("Sections were encoded differently; re-encoding the join so playback is clean ...")
-        ffmpeg(["-f", "concat", "-safe", "0", "-i", str(lst), "-i", str(metaf), "-map", "0:v", "-map", "0:a",
-                "-map_metadata", "1", "-map_chapters", "1", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-                "-c:a", "copy", "-movflags", "+faststart", str(out)], hw=True)
+        ffmpeg(
+            [
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(lst),
+                "-i",
+                str(metaf),
+                "-map",
+                "0:v",
+                "-map",
+                "0:a",
+                "-map_metadata",
+                "1",
+                "-map_chapters",
+                "1",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "18",
+                "-c:a",
+                "copy",
+                "-movflags",
+                "+faststart",
+                str(out),
+            ],
+            hw=True,
+        )
     print(f"Done -> {out} ({ts(t)} long), chapters -> {chap_txt}")
     if len(sections) < 3 or min(durations) < 10:
         print("Note: YouTube only shows chapters with 3+ chapters, each at least 10 seconds long.")

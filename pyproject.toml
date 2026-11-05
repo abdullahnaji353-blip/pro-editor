@@ -1,0 +1,22 @@
+# pro-editor is a Claude plugin, not an installable package. This file only configures the tools
+# used during development (ruff for linting, pytest for the unit tests).
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+src = ["scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E731",  # small lambdas are fine for one-off key functions
+    "B905",  # zip() without strict= (needs Python 3.10)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["common", "avatar", "avatar_art", "listen", "captions", "vlog_cut", "chapters", "color",
+                     "build_montage", "beats", "highlights", "xml_timeline", "sfx", "layout", "conftest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

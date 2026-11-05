@@ -9,13 +9,20 @@ cut's .map.json so word times follow the edit (words that were cut out are dropp
 Writes <out>.ass (styled, for burn-in or editors) and <out>.srt (plain, for platform upload).
 Positions stay inside the TikTok/Reels/Shorts safe zone on vertical video.
 """
+
 import argparse
 from pathlib import Path
 
 from common import die, ff_path, ffmpeg, load_json, probe, safe_copy
 
-COLORS = {"yellow": "&H0000FFFF&", "green": "&H0000FF66&", "cyan": "&H00FFFF00&", "pink": "&H00B469FF&",
-          "red": "&H003C3CFF&", "white": "&H00FFFFFF&"}
+COLORS = {
+    "yellow": "&H0000FFFF&",
+    "green": "&H0000FF66&",
+    "cyan": "&H00FFFF00&",
+    "pink": "&H00B469FF&",
+    "red": "&H003C3CFF&",
+    "white": "&H00FFFFFF&",
+}
 
 
 def remap_words(words, mapping):
@@ -36,8 +43,12 @@ def chunk(words, max_words, max_chars):
     for i, w in enumerate(words):
         gap = w["start"] - cur[-1]["end"] if cur else 0
         text_len = sum(len(x["w"]) + 1 for x in cur) + len(w["w"])
-        if cur and (len(cur) >= max_words or text_len > max_chars or gap > 0.35
-                    or cur[-1]["w"].rstrip().endswith((".", "?", "!", ","))):
+        if cur and (
+            len(cur) >= max_words
+            or text_len > max_chars
+            or gap > 0.35
+            or cur[-1]["w"].rstrip().endswith((".", "?", "!", ","))
+        ):
             chunks.append(cur)
             cur = []
         cur.append(w)
@@ -81,7 +92,8 @@ def build(words, W, H, style="highlight", max_words=3, position="auto", color="y
         "MarginL, MarginR, MarginV, Encoding\n"
         f"Style: Cap,Arial,{size},&H00FFFFFF&,&H00FFFFFF&,&H00000000&,&H80000000&,-1,0,0,0,100,100,1,0,1,"
         f"{max(2, size // 11)},{max(1, size // 22)},5,{int(W * 0.08)},{int(W * 0.08)},0,1\n\n"
-        "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+        "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+    )
     pos = f"{{\\pos({W // 2},{int(H * y)})}}"
     events, srt = [], []
     chunks = chunk(words, max_words, max_chars)
@@ -144,11 +156,33 @@ if __name__ == "__main__":
     if not a.files_only:
         enc = ["-preset", "veryfast", "-crf", "24"] if a.preview else ["-preset", "medium", "-crf", "18"]
         import tempfile
+
         with tempfile.TemporaryDirectory() as td:
             ass = safe_copy(out.with_suffix(".ass"), td, "caps.ass")
             vf = f"subtitles='{ff_path(ass)}'"
             if a.preview:
                 vf = f"scale=iw/2:-2,{vf}"
-            ffmpeg(["-i", a.video, "-vf", vf, "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", *enc,
-                    "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", str(out)], hw=True)
+            ffmpeg(
+                [
+                    "-i",
+                    a.video,
+                    "-vf",
+                    vf,
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "0:a?",
+                    "-c:v",
+                    "libx264",
+                    *enc,
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:a",
+                    "copy",
+                    "-movflags",
+                    "+faststart",
+                    str(out),
+                ],
+                hw=True,
+            )
         print(f"Done -> {out}")

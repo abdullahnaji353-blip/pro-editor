@@ -15,6 +15,7 @@ plus on-screen motion, then keeps the top peaks as clips with some lead-in and f
 It finds LOUD + BUSY moments. It cannot tell a cracked play from a messy one, so treat the
 result as a shortlist to review, not a final pick.
 """
+
 import argparse
 import re
 import subprocess
@@ -23,8 +24,19 @@ from pathlib import Path
 
 import numpy as np
 
-from common import (VIDEO_EXTS, audio_tracks, collect_media, dec_args, extract_audio, ffmpeg, need, probe, run, save_json,
-                    smooth)
+from common import (
+    VIDEO_EXTS,
+    audio_tracks,
+    collect_media,
+    dec_args,
+    extract_audio,
+    ffmpeg,
+    need,
+    probe,
+    run,
+    save_json,
+    smooth,
+)
 
 STEP = 0.5  # seconds per scoring window
 
@@ -42,8 +54,7 @@ def audio_curve(path, n, track=0, voice=False):
     import librosa
 
     with tempfile.TemporaryDirectory() as td:
-        wav = extract_audio(path, Path(td) / "a.wav", sr=16000, track=track,
-                            af=VOICE_BAND if voice else None)
+        wav = extract_audio(path, Path(td) / "a.wav", sr=16000, track=track, af=VOICE_BAND if voice else None)
         y, sr = librosa.load(str(wav), sr=16000, mono=True)
     hop = int(sr * STEP)
     rms = librosa.feature.rms(y=y, frame_length=hop * 2, hop_length=hop)[0]
@@ -55,25 +66,58 @@ def audio_curve(path, n, track=0, voice=False):
 
 
 def motion_curve(path, n):
-    res = run([need("ffmpeg"), "-hide_banner", *dec_args(), "-i", str(path), "-an", "-vf",
-               f"fps={1/STEP},scale=160:-2,signalstats,metadata=print:file=-", "-f", "null", "-"])
+    res = run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            *dec_args(),
+            "-i",
+            str(path),
+            "-an",
+            "-vf",
+            f"fps={1 / STEP},scale=160:-2,signalstats,metadata=print:file=-",
+            "-f",
+            "null",
+            "-",
+        ]
+    )
     vals = [float(v) for v in re.findall(r"lavfi\.signalstats\.YDIF=([\d.]+)", res.stdout)]
     return np.resize(zscore(vals), n) if vals else np.zeros(n)
 
 
 def find_scenic(path, top, pre, post, min_gap):
     """Best-looking, varied moments. One frame per second, scored like a thumbnail, plus movement."""
-    from thumbnail import score as look_score, too_similar
+    from thumbnail import score as look_score
+    from thumbnail import too_similar
+
     info = probe(path)
     W, H = 192, 108
-    res = subprocess.run([need("ffmpeg"), "-hide_banner", "-loglevel", "error", *dec_args(), "-i", str(path), "-an",
-                          "-vf", f"fps=1,scale={W}:{H}", "-pix_fmt", "rgb24", "-f", "rawvideo", "-"],
-                         capture_output=True)
+    res = subprocess.run(
+        [
+            need("ffmpeg"),
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *dec_args(),
+            "-i",
+            str(path),
+            "-an",
+            "-vf",
+            f"fps=1,scale={W}:{H}",
+            "-pix_fmt",
+            "rgb24",
+            "-f",
+            "rawvideo",
+            "-",
+        ],
+        capture_output=True,
+    )
     n = len(res.stdout) // (W * H * 3)
     if not n:
         return []
     frames = np.frombuffer(res.stdout[: n * W * H * 3], np.uint8).reshape(n, H, W, 3).astype(float)
     from analyze_style import scene_cuts
+
     cuts = scene_cuts(path)  # shot boundaries: a cut is not "movement", and clips stay inside one shot
     looks = np.array([look_score(f) for f in frames])
     motion = np.array([0.0] + [np.abs(frames[i] - frames[i - 1]).mean() for i in range(1, n)])
@@ -100,10 +144,18 @@ def find_scenic(path, top, pre, post, min_gap):
         lo = max([b for b in bounds if b <= t + 0.05], default=0.0)
         hi = min([b for b in bounds if b > t + 0.05], default=info["duration"])
         start, end = max(lo, t - pre), min(hi, t + post)
-        if end - start < 1.5:            # short shot: take the whole shot
+        if end - start < 1.5:  # short shot: take the whole shot
             start, end = lo, hi
-        out.append({"source": info["path"], "peak": round(t, 2), "start": round(start, 2),
-                    "end": round(end, 2), "score": round(sc, 3), "mode": "scenic"})
+        out.append(
+            {
+                "source": info["path"],
+                "peak": round(t, 2),
+                "start": round(start, 2),
+                "end": round(end, 2),
+                "score": round(sc, 3),
+                "mode": "scenic",
+            }
+        )
     return out
 
 
@@ -136,8 +188,16 @@ def find(path, top, pre, post, min_gap, track=0, mode="action", context=8.0):
             k -= 1
         lead = max(pre, t - k * STEP + 0.5) if context > 0 else pre
         start, end = max(0.0, t - lead), min(info["duration"], t + post)
-        out.append({"source": info["path"], "peak": round(t, 2), "start": round(start, 2),
-                    "end": round(end, 2), "score": round(s, 3), "mode": mode})
+        out.append(
+            {
+                "source": info["path"],
+                "peak": round(t, 2),
+                "start": round(start, 2),
+                "end": round(end, 2),
+                "score": round(s, 3),
+                "mode": mode,
+            }
+        )
     return out
 
 
@@ -148,16 +208,28 @@ if __name__ == "__main__":
     ap.add_argument("--pre", type=float, default=None, help="seconds kept before the peak (3; reactions 5)")
     ap.add_argument("--post", type=float, default=None, help="seconds kept after the peak (2; reactions 4)")
     ap.add_argument("--min-score", type=float, default=0.5, help="drop picks weaker than this")
-    ap.add_argument("--context", type=float, default=8.0,
-                    help="max extra lead-in (s) to include the setup before a peak; 0 = fixed --pre only")
-    ap.add_argument("--mode", choices=["action", "reactions", "scenic"], default="action",
-                    help="action = fights/goals; reactions = funny moments from your voice; "
-                         "scenic = best-looking varied shots (travel/events/vlogs)")
+    ap.add_argument(
+        "--context",
+        type=float,
+        default=8.0,
+        help="max extra lead-in (s) to include the setup before a peak; 0 = fixed --pre only",
+    )
+    ap.add_argument(
+        "--mode",
+        choices=["action", "reactions", "scenic"],
+        default="action",
+        help="action = fights/goals; reactions = funny moments from your voice; "
+        "scenic = best-looking varied shots (travel/events/vlogs)",
+    )
     ap.add_argument("--min-gap", type=float, default=8.0, help="min seconds between highlights")
     ap.add_argument("--out", default="highlights.json")
     ap.add_argument("--export-dir", default=None, help="also cut each highlight to its own mp4")
-    ap.add_argument("--audio-track", type=int, default=0,
-                    help="which audio track to score (0 = first). Use the game-only track if there is one")
+    ap.add_argument(
+        "--audio-track",
+        type=int,
+        default=0,
+        help="which audio track to score (0 = first). Use the game-only track if there is one",
+    )
     ap.add_argument("--tracks-only", action="store_true", help="just list each file's audio tracks and exit")
     a = ap.parse_args()
 
@@ -191,9 +263,27 @@ if __name__ == "__main__":
         if a.export_dir:
             Path(a.export_dir).mkdir(parents=True, exist_ok=True)
             clip = Path(a.export_dir) / f"hl_{i:02d}_{Path(h['source']).stem}_{int(h['peak'])}s.mp4"
-            ffmpeg(["-ss", str(h["start"]), "-i", h["source"], "-t", str(h["end"] - h["start"]),
-                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-b:a", "192k",
-                    str(clip)])
+            ffmpeg(
+                [
+                    "-ss",
+                    str(h["start"]),
+                    "-i",
+                    h["source"],
+                    "-t",
+                    str(h["end"] - h["start"]),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "veryfast",
+                    "-crf",
+                    "18",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    str(clip),
+                ]
+            )
             h["clip"] = str(clip.resolve())
     save_json({"highlights": allh, "audio_tracks": track_report, "scored_track": a.audio_track}, a.out)
     print(f"{len(allh)} highlights -> {a.out}")
