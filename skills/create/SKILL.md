@@ -10,7 +10,7 @@ description: >
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.13.0"
+  version: "0.14.0"
 ---
 
 # Create
@@ -105,9 +105,13 @@ python3 $S/create.py render <work>/project.json        # full quality
      to `vo/` if a cut sounds off. It spends the user's credits: never retry a generation on your
      own, and if the service is busy, say so and carry on with the visuals.
   2. `--engine elevenlabs` when the user has `ELEVENLABS_API_KEY` set (`--voice <voice id>`).
-  3. The computer's own voices: `say` on a Mac (`--voice Samantha`, `Daniel`; `say -v ?` lists
+  3. **Kokoro**, free and natural-sounding, runs on their computer (`pip install kokoro-onnx
+     soundfile`; the 120 MB model downloads once from GitHub). `--engine kokoro --voice am_michael`
+     (US male), `af_heart` (US female), `bm_george` / `bf_emma` (British). It's the default when
+     installed, and the fallback when a paid voice is busy or out of credits.
+  4. The computer's own voices: `say` on a Mac (`--voice Samantha`, `Daniel`; `say -v ?` lists
      them), Windows' voices, espeak-ng or Piper on Linux.
-  4. Their own recording: `"voiceover"` for one file, or `"audio"` per scene.
+  5. Their own recording: `"voiceover"` for one file, or `"audio"` per scene.
   No voice at all: `--engine none` times scenes for reading.
 - **Look at the sheet before rendering**: text overflow, things overlapping, empty frames, a scene
   that ends before its last element appears. Fix the HTML and re-sheet; it takes seconds.

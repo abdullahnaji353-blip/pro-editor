@@ -359,6 +359,8 @@ Voiceover, best first:
   generates the whole script as one take (it uses your ElevenLabs credits), and `create.py voice`
   cuts it into lines at the pauses and times each scene to its line. With an API key instead, set
   `ELEVENLABS_API_KEY` and use `--engine elevenlabs`.
+- Kokoro, a free natural-sounding voice that runs on your computer (`pip install kokoro-onnx
+  soundfile`, then the model downloads once). US and British, male and female voices.
 - Your computer's own voices (on a Mac, the same voices as `say`).
 - Your own recording: one file for the whole script (`"voiceover"`) or one per scene (`"audio"`).
 

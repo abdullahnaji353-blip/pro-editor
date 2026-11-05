@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0
+
+- Kokoro voice for `/create`: free, natural-sounding narration that runs on your computer
+  (`--engine kokoro`, the default when installed).
+- Fixes `/create` failing to mix audio when more than one scene had a voice line.
+- Scenes end 0.3 s after their line instead of 0.45 s, so there's less dead air between them.
+
 ## 0.13.0
 
 - `check_render.py`: checks a render before Claude shows it: loudness and true peak, the level of

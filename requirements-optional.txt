@@ -4,3 +4,5 @@ opencv-python-headless<5     # face tracking (vertical crop) and /avatar
 pillow>=9                    # /avatar speech bubbles
 mediapipe>=0.10.14           # /avatar hand tracking, /talk sound recognition
 playwright>=1.40             # /create (then: python -m playwright install chromium)
+# /create: free natural voiceover on your computer
+kokoro-onnx

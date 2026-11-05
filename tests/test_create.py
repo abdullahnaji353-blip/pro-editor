@@ -25,7 +25,7 @@ def test_caption_timings_stay_inside_each_scene():
 
 def test_engine_choice_respects_an_explicit_pick():
     assert pick_engine("none") == "none"
-    assert pick_engine("auto") in {"say", "sapi", "piper", "espeak", "none"}
+    assert pick_engine("auto") in {"kokoro", "say", "sapi", "piper", "espeak", "none"}
 
 
 def test_scenes_snap_to_bars():
@@ -71,3 +71,15 @@ def test_split_never_goes_backwards_without_pauses():
 
     cuts = split_points([], [1, 1, 1, 1], 8.0)
     assert cuts == sorted(cuts) and len(cuts) == 3 and cuts[0] > 0
+
+
+def test_audio_mix_numbers_every_voice_line_and_the_music(tmp_path, monkeypatch):
+    import create
+
+    seen = {}
+    monkeypatch.setattr(create.subprocess, "run", lambda cmd, **k: seen.setdefault("cmd", cmd))
+    pj = {"music": "song.mp3", "scenes": [{"audio": "a.wav"}, {}, {"audio": "b.wav"}, {"audio": "c.wav"}]}
+    assert create.build_audio(tmp_path, pj, [2, 2, 2, 2], 8.0, tmp_path / "m.wav")
+    graph = seen["cmd"][seen["cmd"].index("-filter_complex") + 1]
+    assert "[0:a]" in graph and "[1:a]" in graph and "[2:a]" in graph and "[3:a]" in graph
+    assert "[4:a]" not in graph

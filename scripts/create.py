@@ -1,12 +1,13 @@
 """/create: make a video from scratch: code-drawn scenes, a voiceover, music and captions.
 
 Commands
-  voice  PROJECT.json [--engine auto|say|sapi|espeak|piper|elevenlabs|none] [--voice NAME] [--force]
+  voice  PROJECT.json [--engine auto|kokoro|say|sapi|espeak|piper|elevenlabs|none] [--voice NAME] [--force]
          Writes a voiceover for every scene that has "narration" (vo/<id>.wav), then sizes each
          scene to its narration. Scenes with an "audio" file use it. With "voiceover": "vo.mp3"
          (one recording of the whole script: an AI voice from ElevenLabs or another tool, or the
          user's own) it is cut at the pauses between scenes instead. elevenlabs needs
-         ELEVENLABS_API_KEY; --voice is then a voice id.
+         ELEVENLABS_API_KEY; --voice is then a voice id. kokoro is a free neural voice that runs
+         locally (pip install kokoro-onnx soundfile; voices like am_michael, af_heart, bm_george).
   sheet  PROJECT.json [--out sheet.jpg]
          Three stills per scene (just in, middle, about to leave) in one image: check this before
          the slow render.
@@ -66,9 +67,58 @@ def scene_duration(s):
 
 
 # ------------------------------------------------------------------ voice
+KOKORO_URL = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
+KOKORO_FILES = ("kokoro-v1.0.int8.onnx", "voices-v1.0.bin")
+
+
+def kokoro_dir():
+    import os
+
+    return Path(os.environ.get("PRO_EDITOR_KOKORO_DIR") or Path.home() / ".cache" / "pro-editor" / "kokoro")
+
+
+def has_kokoro():
+    import importlib.util
+
+    return importlib.util.find_spec("kokoro_onnx") is not None
+
+
+def kokoro(text, voice, dst):
+    """Kokoro: a free, open neural voice that runs on the computer (about 120 MB, downloaded once)."""
+    import urllib.request
+
+    import numpy as np
+    import soundfile as sf
+
+    if not has_kokoro():
+        die("Kokoro needs:  python -m pip install kokoro-onnx soundfile")
+    d = kokoro_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    for f in KOKORO_FILES:
+        if not (d / f).exists():
+            print(f"  downloading the Kokoro voice model ({f}, once) ...")
+            urllib.request.urlretrieve(KOKORO_URL + f, d / (f + ".part"))
+            (d / (f + ".part")).replace(d / f)
+    from kokoro_onnx import Kokoro
+
+    global _KOKORO
+    if "_KOKORO" not in globals():
+        _KOKORO = Kokoro(str(d / KOKORO_FILES[0]), str(d / KOKORO_FILES[1]))
+    v = voice or "am_michael"
+    lang = {"a": "en-us", "b": "en-gb", "e": "es", "f": "fr-fr", "i": "it", "p": "pt-br", "j": "ja", "z": "cmn"}
+    audio, sr = _KOKORO.create(text, voice=v, speed=1.05, lang=lang.get(v[0], "en-us"))
+    with tempfile.TemporaryDirectory() as td:
+        w = Path(td) / "k.wav"
+        sf.write(w, np.asarray(audio), sr)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(w), "-ar", "48000", "-ac", "1", str(dst)], check=True)
+    return True
+
+
 def pick_engine(want):
     if want != "auto":
         return want
+    if has_kokoro():
+        return "kokoro"
     if platform.system() == "Darwin" and shutil.which("say"):
         return "say"
     if platform.system() == "Windows":
@@ -105,6 +155,8 @@ def speak(engine, text, voice, dst):
             cmd = [exe, "-w", str(raw)] + (["-v", voice] if voice else []) + [text]
         elif engine == "elevenlabs":
             return elevenlabs(text, voice, dst)
+        elif engine == "kokoro":
+            return kokoro(text, voice, dst)
         elif engine == "piper":
             raw = raw.with_suffix(".wav")
             cmd = ["piper", "--model", os.environ["PRO_EDITOR_PIPER_MODEL"], "--output_file", str(raw)]
@@ -286,7 +338,7 @@ def cmd_voice(a):
         if audio:
             dur = probe(base / audio)["duration"]
             s["audio_duration"] = round(dur, 3)
-            s["duration"] = round(max(float(s.get("min_duration", 2.0)), dur + 0.45), 3)
+            s["duration"] = round(max(float(s.get("min_duration", 2.0)), dur + 0.3), 3)
         else:
             s.pop("audio_duration", None)
             s["duration"] = round(scene_duration({**s, "duration": None}), 3)
@@ -473,10 +525,12 @@ def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None):
 def build_audio(base, pj, durs, total, out_wav):
     """Voice lines placed at their scenes' starts, music under them ducking while someone talks."""
     inputs, chains, labels = [], [], []
+    n_in = 0  # ffmpeg input index (inputs holds the command-line tokens)
     t = 0.0
     for s, d in zip(pj["scenes"], durs):
         if s.get("audio"):
-            k = len(inputs)
+            k = n_in
+            n_in += 1
             inputs += ["-i", str(base / s["audio"])]
             ms = int(round((t + 0.15) * 1000))
             chains.append(f"[{k}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[v{k}]")
@@ -491,7 +545,7 @@ def build_audio(base, pj, durs, total, out_wav):
             f"{''.join(labels)}amix=inputs={len(labels)}:duration=longest:normalize=0,apad,atrim=0:{total:.3f}[voice]"
         )
     if music:
-        k = len(inputs)
+        k = n_in
         inputs += ["-stream_loop", "-1", "-i", str((base / music).resolve())]
         vol = float(pj.get("music_volume", 0.18 if has_voice else 0.8))
         chains.append(
@@ -639,7 +693,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("voice")
     v.add_argument("project")
-    v.add_argument("--engine", choices=["auto", "say", "sapi", "espeak", "piper", "elevenlabs", "none"])
+    v.add_argument("--engine", choices=["auto", "kokoro", "say", "sapi", "espeak", "piper", "elevenlabs", "none"])
     v.add_argument("--voice")
     v.add_argument("--force", action="store_true", help="record again even if the file exists")
     s = sub.add_parser("sheet")
