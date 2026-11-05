@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+# renders and working files never belong in the repo
+*.mp4
+*.mov
+*.mkv
+*.wav
+*.mp3
+montage-lab/
+sections/
+exports/
