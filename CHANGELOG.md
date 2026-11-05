@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.0
+
+- Sound effects that land, in three layers: `sfx.py spot` watches an edit for the moments that
+  want a sound (hard cuts, cards, images and text popping in), `sfx.py search` / `pick` get free
+  CC0 / CC BY sounds from Openverse and rank them by measuring them, and `sfx.py add` mixes them so
+  each sound's peak hits its frame. New built-in sounds: swish, pop, click, tick, ding.
+- `/create` with `"sfx": true`: a whoosh on every scene change and a pop or swish on everything the
+  kit animates, on the exact frame, thinned to about one a second and kept under the voice.
+
 ## 0.14.0
 
 - Kokoro voice for `/create`: free, natural-sounding narration that runs on your computer

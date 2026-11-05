@@ -17,7 +17,7 @@ Commands
 
 PROJECT.json
   {"title": "...", "size": "1080x1920", "fps": 30,
-   "music": "song.mp3", "music_volume": 0.18, "captions": true,
+   "music": "song.mp3", "music_volume": 0.18, "captions": true, "sfx": true, "sfx_volume": 0.22,
    "voice": {"engine": "auto", "voice": null}, "voiceover": null,
    "scenes": [{"id": "01-hook", "html": "scenes/01-hook.html", "narration": "...", "min_duration": 2.5}]}
 
@@ -513,6 +513,8 @@ def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None):
         for i in range(n):
             draw(page, i / fps, d)
             ff.stdin.write(page.screenshot(type="jpeg", quality=92))
+        # moments the kit animated (pops, reveals, drawn lines) for "sfx": true
+        s["_sfx"] = [e for e in (page.evaluate("Object.values(window.__sfx || {})") or []) if 0 <= e["t"] < d]
     finally:
         ff.stdin.close()
         ff.wait()
@@ -520,6 +522,35 @@ def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None):
         die(f"Encoding scene {s['id']} failed.")
     tmp.replace(dst)
     return n / fps
+
+
+def sfx_events(pj, durs):
+    """Where sound effects go: a whoosh on every scene change, a pop or swish on what the kit
+    animated, thinned to about one a second (scene changes and pops win)."""
+    from sfx import thin
+
+    ev, t = [], 0.0
+    for i, (s, d) in enumerate(zip(pj["scenes"], durs)):
+        if i:
+            ev.append({"t": t, "kind": "whoosh", "strength": 1.0})
+        for e in s.get("_sfx") or []:
+            ev.append({"t": round(t + e["t"], 3), "kind": e["kind"], "strength": 0.8 if e["kind"] == "pop" else 0.5})
+        t += d
+    return thin(ev, per_sec=float(pj.get("sfx_per_sec", 0.9)))
+
+
+def sfx_track(base, pj, durs, total, dst):
+    if not pj.get("sfx"):
+        return None
+    from sfx import build_sfx_track
+
+    ev = sfx_events(pj, durs)
+    if not ev:
+        return None
+    sounds = base / pj["sfx_sounds"] if pj.get("sfx_sounds") else None
+    build_sfx_track([(e["kind"], e["t"]) for e in ev], total, dst, float(pj.get("sfx_volume", 0.22)), sounds)
+    print(f"  {len(ev)} sound effects")
+    return dst
 
 
 def build_audio(base, pj, durs, total, out_wav):
@@ -536,9 +567,10 @@ def build_audio(base, pj, durs, total, out_wav):
             chains.append(f"[{k}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[v{k}]")
             labels.append(f"[v{k}]")
         t += d
+    sfx_wav = sfx_track(base, pj, durs, total, out_wav.with_name("sfx.wav"))
     music = pj.get("music")
     has_voice = bool(labels)
-    if not has_voice and not music:
+    if not has_voice and not music and not sfx_wav:
         return False
     if has_voice:
         chains.append(
@@ -546,6 +578,7 @@ def build_audio(base, pj, durs, total, out_wav):
         )
     if music:
         k = n_in
+        n_in += 1
         inputs += ["-stream_loop", "-1", "-i", str((base / music).resolve())]
         vol = float(pj.get("music_volume", 0.18 if has_voice else 0.8))
         chains.append(
@@ -555,11 +588,22 @@ def build_audio(base, pj, durs, total, out_wav):
         if has_voice:
             chains.append("[voice]asplit[vo][key]")
             chains.append("[mus][key]sidechaincompress=threshold=0.02:ratio=6:attack=15:release=350[duck]")
-            chains.append("[vo][duck]amix=inputs=2:duration=first:normalize=0[mix]")
+            chains.append("[vo][duck]amix=inputs=2:duration=first:normalize=0[base]")
         else:
-            chains.append("[mus]anull[mix]")
+            chains.append("[mus]anull[base]")
+    elif has_voice:
+        chains.append("[voice]anull[base]")
+    if sfx_wav:  # effects sit on top: they never duck the music or get ducked themselves
+        k = n_in
+        inputs += ["-i", str(sfx_wav)]
+        fx = f"[{k}:a]aresample=48000,aformat=channel_layouts=stereo,apad,atrim=0:{total:.3f}"
+        if has_voice or music:
+            chains.append(f"{fx}[fx]")
+            chains.append("[base][fx]amix=inputs=2:duration=first:normalize=0[mix]")
+        else:
+            chains.append(f"{fx}[mix]")
     else:
-        chains.append("[voice]anull[mix]")
+        chains.append("[base]anull[mix]")
     chains.append("[mix]loudnorm=I=-14:TP=-1.5:LRA=11[out]")
     subprocess.run(
         [

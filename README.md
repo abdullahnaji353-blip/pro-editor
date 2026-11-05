@@ -28,6 +28,8 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
   synced to your song, promos, lyric videos, memes, explainers with a researched script. AI
   voiceover (ElevenLabs, or free Kokoro on your computer), an animated presenter that lip-syncs to it,
   AI or real clips inside scenes, music and captions.
+- Sound effects that land: finds the moments that need one (cuts, cards and text popping in),
+  picks from your sounds, free Openverse sounds or built-in ones, and hits each on its frame.
 - Checks its own work before showing you: loudness, clicks at cuts, black or frozen frames, with
   frame strips around every cut. Lasting notes become rules it follows on every future edit.
 - Exports for TikTok, Reels, Shorts and YouTube up to 4K, plus timelines for Premiere Pro and
@@ -35,7 +37,7 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 
 ![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
-> Early version (0.14). Every tool is tested on generated test videos, but not much on real
+> Early version (0.15). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
 > Bug reports are very welcome.
 

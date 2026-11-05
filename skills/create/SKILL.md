@@ -4,13 +4,13 @@ description: >
   This skill should be used when the user invokes /create, or asks to "make a video about X",
   "make a hype intro", "kinetic typography", "lyric video", "promo / ad for my product", "channel
   intro or outro", "animated meme", "make an explainer", "faceless video", "make a video with AI",
-  "motion graphics", "a video like the ones made with Claude", "AI voiceover", "add an AI presenter",
+  "motion graphics", "a video like the ones made with Claude", "AI voiceover", "add an AI presenter", "sound effects",
   "use AI clips", or wants any video made from scratch
   rather than edited from their footage. Plans it, codes each scene as an animation (synced to the
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.14.0"
+  version: "0.15.0"
 ---
 
 # Create
@@ -116,6 +116,10 @@ python3 $S/create.py render <work>/project.json        # full quality
 - **Look at the sheet before rendering**: text overflow, things overlapping, empty frames, a scene
   that ends before its last element appears. Fix the HTML and re-sheet; it takes seconds.
 - `render --only <scene id>` redraws one scene and reuses the rest.
+- **Sound effects**: `"sfx": true` lands a whoosh on every scene change and a pop or swish on what
+  the kit animates (`K.pop`, `K.reveal`, `K.draw`), on the exact frame, about one a second, under
+  the voice. `"sfx_sounds": "sounds"` uses their own files (`pop*.wav`, `whoosh*.mp3`...);
+  `"sfx_volume"` (default 0.22) sets the level. Call `K.sfx("ding", t, "id")` for one by hand.
 - Music: `"music": "song.mp3"` ducks under the voice automatically; loudness ends at -14 LUFS.
   `"captions": true` burns word-by-word captions from the narration.
 

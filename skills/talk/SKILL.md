@@ -9,7 +9,7 @@ description: >
   spoken instructions ("clip that", "Claude, zoom in here", "cut that", "let me redo that"), thinks
   through what the user wants together with any typed prompt, then edits.
 metadata:
-  version: "0.13.0"
+  version: "0.15.0"
 ---
 
 # Talk
@@ -120,6 +120,25 @@ Share this when they ask how to use /talk:
 Speech recognition mishears names, slang and mixed languages. Say so when an instruction depends
 on a word it may have misheard. A sound being detected doesn't mean it was a good moment: check
 the frames or the transcript around it before building the edit on it.
+
+
+## Sound effects that land
+
+When the user wants SFX ("add sound effects", "make it pop"), or the style calls for them:
+
+1. **Find the moments**: `python3 $S/sfx.py spot <video> --out <work>/sfx_events.json` lists hard
+   cuts (whoosh) and things popping in, like cards, images and text (pop), thinned to about one a
+   second. Read the list and drop anything that isn't a real moment.
+2. **Pick the sounds**, best first: the user's own (a folder of `pop*.wav`, `whoosh*.mp3`...,
+   passed as `--sounds`); free library sounds (`sfx.py search "pop" --dir <work>/sounds` pulls
+   CC0 / CC BY sounds from Openverse and writes the credits; needs internet), ranked for the job
+   with `sfx.py pick <work>/sounds --for pop` (length, attack, brightness, noise vs tone, measured);
+   or the built-in synthesized ones (whoosh, swish, pop, click, tick, ding, impact, riser).
+3. **Add them**: `sfx.py add <video> --events <work>/sfx_events.json [--sounds DIR] --out <out>`.
+   Each sound's loudest point lands on its frame. Then run the render check.
+
+Fewer is better: every effect sits on something you can see, and about 8 in 20 seconds reads as
+designed where 20 reads as cheap. Effects sit under the voice, never over it.
 
 ## Every edit: your rules, then a check before you show it
 

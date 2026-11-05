@@ -11,19 +11,23 @@
   };
   const $ = (s) => document.querySelector(s);
   const el = (x) => (typeof x === "string" ? $(x) : x);
+  // every pop / reveal / draw is noted once, so the renderer can land a sound effect on it
+  const sfx = (kind, t, sel) => { (window.__sfx = window.__sfx || {})[`${kind}|${sel}|${t.toFixed(3)}`] = { kind, t }; };
   const K = {
-    clamp, ease, $,
+    clamp, ease, $, sfx,
     lerp: (a, b, x) => a + (b - a) * x,
     // progress 0..1 of an action that starts at `start` and lasts `dur`, eased
     p: (t, start, dur = 0.6, e = ease.out) => e(clamp((t - start) / dur)),
     // fade + slide in; out at the scene's end when d is given
     reveal(x, t, start, dur = 0.6, dy = 50, d = null) {
+      sfx("swish", start + dur * 0.35, String(x));
       const n = el(x); if (!n) return;
       let k = K.p(t, start, dur);
       if (d !== null) k *= 1 - K.p(t, d - 0.35, 0.35, ease.inOut);
       n.style.opacity = k; n.style.transform = `translateY(${(1 - k) * dy}px)`;
     },
     pop(x, t, start, dur = 0.5) {
+      sfx("pop", start + dur * 0.45, String(x));
       const n = el(x); if (!n) return;
       const k = K.p(t, start, dur, ease.back);
       n.style.opacity = clamp(k * 3); n.style.transform = `scale(${0.6 + 0.4 * k})`;
@@ -41,6 +45,7 @@
       n.style.transform = `scale${axis}(${frac * K.p(t, start, dur)})`;
     },
     draw(x, t, start, dur = 1.0) {           // stroke a path on, like a pen
+      sfx("swish", start + 0.15, String(x));
       const n = el(x); if (!n) return;
       const L = n.getTotalLength(); n.style.strokeDasharray = L;
       n.style.strokeDashoffset = L * (1 - K.p(t, start, dur, ease.inOut));

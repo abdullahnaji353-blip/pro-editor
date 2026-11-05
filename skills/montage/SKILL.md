@@ -7,7 +7,7 @@ description: >
   music edit from their clips and a song. Cuts clips on the beat, applies effects and color from a style recipe, and renders an
   MP4 plus an XML timeline that opens in Premiere Pro or DaVinci Resolve.
 metadata:
-  version: "0.13.0"
+  version: "0.15.0"
 ---
 
 # Montage
@@ -166,6 +166,25 @@ CapCut can't import the timeline; for CapCut users, deliver the MP4 (or export c
 
 When working in a cloud session, send finished files to the user with the file-sending tool.
 On their own computer, write outputs next to their footage and say where.
+
+
+## Sound effects that land
+
+When the user wants SFX ("add sound effects", "make it pop"), or the style calls for them:
+
+1. **Find the moments**: `python3 $S/sfx.py spot <video> --out <work>/sfx_events.json` lists hard
+   cuts (whoosh) and things popping in, like cards, images and text (pop), thinned to about one a
+   second. Read the list and drop anything that isn't a real moment.
+2. **Pick the sounds**, best first: the user's own (a folder of `pop*.wav`, `whoosh*.mp3`...,
+   passed as `--sounds`); free library sounds (`sfx.py search "pop" --dir <work>/sounds` pulls
+   CC0 / CC BY sounds from Openverse and writes the credits; needs internet), ranked for the job
+   with `sfx.py pick <work>/sounds --for pop` (length, attack, brightness, noise vs tone, measured);
+   or the built-in synthesized ones (whoosh, swish, pop, click, tick, ding, impact, riser).
+3. **Add them**: `sfx.py add <video> --events <work>/sfx_events.json [--sounds DIR] --out <out>`.
+   Each sound's loudest point lands on its frame. Then run the render check.
+
+Fewer is better: every effect sits on something you can see, and about 8 in 20 seconds reads as
+designed where 20 reads as cheap. Effects sit under the voice, never over it.
 
 ## Every edit: your rules, then a check before you show it
 

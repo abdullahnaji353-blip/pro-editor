@@ -141,6 +141,15 @@ each section's level, a click at any cut, black or frozen stretches, plus a stri
 waveform around every cut. It fixes what it finds (three rounds at most) and tells you what's left.
 For something you'll publish, a second Claude reviews it with fresh eyes and lists the top fixes.
 
+### Sound effects that land on the frame
+
+Say "add sound effects". Claude watches the edit for the moments that want a sound (hard cuts, and
+cards, images or text popping in), shows you the list, and places each sound so its loudest point
+hits the exact frame. Sounds come from your own folder first (name them `pop.wav`, `whoosh.mp3`...),
+then free CC0 / CC BY sounds from Openverse that it measures and ranks for the job (credits saved
+for you), then built-in synthesized ones. About one a second at most, always under your voice.
+In `/create` it's one switch (`"sfx": true`) because every animation's frame is already known.
+
 ### It learns your style
 
 When a note is lasting ("always put captions up top", "never use the glitch effect", or the same
