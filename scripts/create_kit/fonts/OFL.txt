@@ -1,4 +1,5 @@
-Fonts in this folder are licensed under the SIL Open Font License 1.1 (copyright notices below).
+Fonts in this folder are licensed under the SIL Open Font License 1.1, except Special Elite and
+Permanent Marker, which are under the Apache License 2.0 (copyright notices below).
 Bundled from the @fontsource npm packages (latin subsets).
 
 == anton
@@ -137,4 +138,12 @@ Copyright 2010 The Bangers Project Authors (https://github.com/googlefonts/bange
 == cabin-sketch-5.3.0
 Copyright 2011 The Cabin Project Authors (impallari@gmail.com), with Reserved Font Name "Cabin", "Cabin Sketch". CabinSketch-Bold.ttf: Copyright 2011 The Cabin Project Authors (impallari@gmail.com), with Reserved Font Name "Cabin", "Cabin Sketch".
 
+
+== fontsource-permanent-marker-5.3.0
+                                 Apache License
+                           Version 2.0, January 2004
+
+== fontsource-special-elite-5.3.0
+                                 Apache License
+                           Version 2.0, January 2004
 

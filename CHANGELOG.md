@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.0
+
+- `collage` look for `/create`: the video-essay desk. Torn paper cards with thickness and shadow,
+  tape, typewriter strips, rubber stamps, pins and red string, marker circles and underlines,
+  and 16 halftone illustrations, moving in stepped 12 fps like stop-motion.
+- A camera that travels the board from beat to beat, so each new piece fills the frame.
+- Tactile sound effects (paper, tape, stamp, typewriter, marker) that land with each piece, and
+  `"music": "bed"` for a generated documentary music bed.
+- The skill now writes explainers as short beats, a new visual every 2-3 seconds.
+
 ## 0.16.1
 
 - `/create` caps the bitrate (10 Mbps at 1080p) so film grain no longer makes 600 MB files.

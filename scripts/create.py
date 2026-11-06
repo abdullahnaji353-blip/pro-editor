@@ -17,7 +17,7 @@ Commands
 
 PROJECT.json
   {"title": "...", "size": "1080x1920", "fps": 30,
-   "look": "editorial | news | hype | minimal | tech | pop",
+   "look": "collage | editorial | news | hype | minimal | tech | pop",
    "music": "song.mp3", "music_volume": 0.18, "captions": true, "sfx": true, "sfx_volume": 0.22,
    "voice": {"engine": "auto", "voice": null}, "voiceover": null,
    "scenes": [{"id": "01-hook", "html": "scenes/01-hook.html", "narration": "...", "min_duration": 2.5}]}
@@ -364,7 +364,7 @@ def cmd_voice(a):
 def song_beats(base, pj):
     """Beats of the project's music, cached next to the project."""
     music = pj.get("music")
-    if not music:
+    if not music or music == "bed":
         return None
     cache = base / ".render" / "beats.json"
     src = (base / music).resolve()
@@ -417,7 +417,7 @@ def scene_page(browser, W, H, scale=1):
     """A browser page where the kit (and three.js for K3 scenes) loads before each scene's own script,
     so scenes can use K, ART and K3 at the top level as well as inside render()."""
     page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=scale)
-    for f in ("kit.js", "host.js", "art.js"):
+    for f in ("kit.js", "host.js", "art.js", "icons.js", "collage.js"):
         page.add_init_script(path=str(KIT / f))
     src = (KIT / "vendor" / "three.cjs").read_text(encoding="utf-8")
     page.add_init_script(
@@ -615,6 +615,10 @@ def build_audio(base, pj, durs, total, out_wav):
         t += d
     sfx_wav = sfx_track(base, pj, durs, total, out_wav.with_name("sfx.wav"))
     music = pj.get("music")
+    if music == "bed":  # a quiet documentary bed made on the spot (no licensing)
+        from sfx import music_bed
+
+        music = str(music_bed(total, out_wav.with_name("bed.wav"), bpm=float(pj.get("bed_bpm", 84))))
     has_voice = bool(labels)
     if not has_voice and not music and not sfx_wav:
         return False

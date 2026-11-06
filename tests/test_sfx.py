@@ -50,3 +50,17 @@ def test_openverse_results_keep_credits():
                      {"id": "y", "title": "no url"}]}  # fmt: skip
     r = openverse_results(j)
     assert len(r) == 1 and r[0]["license"] == "cc0 1.0" and r[0]["creator"] == "sam" and r[0]["duration"] == 0.4
+
+
+def test_tactile_sounds_and_music_bed(tmp_path):
+    import soundfile as sf
+
+    from sfx import music_bed
+
+    for kind in ("paper", "stamp", "tape", "type", "marker"):
+        s = SYNTHS[kind]()
+        assert s.shape[1] == 2 and 0 < len(s) / SR < 1 and np.abs(s).max() <= 1.0001, kind
+    out = music_bed(6.0, tmp_path / "bed.wav")
+    x, sr = sf.read(out)
+    assert abs(len(x) / sr - 6.0) < 0.01 and 0.3 < np.abs(x).max() <= 0.61
+    assert np.abs(x[: int(0.05 * sr)]).max() < 0.05  # fades in

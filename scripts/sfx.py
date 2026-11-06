@@ -118,10 +118,140 @@ def ding(dur=0.9, seed=8):
     return np.stack([x, x], axis=1)
 
 
-SYNTHS = {"whoosh": whoosh, "swish": swish, "impact": impact, "riser": riser, "pop": pop, "click": click,
-          "tick": tick, "ding": ding}  # fmt: skip
-GAIN = {"whoosh": 0.55, "swish": 0.4, "riser": 0.45, "impact": 0.9, "pop": 0.6, "click": 0.5, "tick": 0.4,
-        "ding": 0.45}  # fmt: skip
+def paper(dur=0.32, seed=9):
+    """paper sliding onto a desk: a soft brushed swell"""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 1.5
+    x = _noise(n, seed)
+    x = _onepole_lowpass(x, np.full(n, 3500.0)) - _onepole_lowpass(x, np.full(n, 600.0))
+    x = x * env
+    x = x / (np.abs(x).max() or 1)
+    return np.stack([x, x * 0.92], axis=1)
+
+
+def stamp(dur=0.35, seed=10):
+    """a rubber stamp: wooden thud plus a dry knock"""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    thud = np.sin(2 * np.pi * (95 * t + 30 * np.exp(-t * 30) / 30)) * np.exp(-t * 22)
+    knock = _onepole_lowpass(_noise(n, seed), np.full(n, 2500.0)) * np.exp(-t * 90)
+    x = thud * 0.9 + knock * 0.8
+    x = x / (np.abs(x).max() or 1)
+    return np.stack([x, x], axis=1)
+
+
+def tape(dur=0.28, seed=11):
+    """tape pressed down: a crackly little rip"""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    rng = np.random.default_rng(seed)
+    crack = (rng.random(n) < 0.02) * rng.uniform(-1, 1, n)
+    x = _onepole_lowpass(crack + 0.25 * _noise(n, seed), np.full(n, 6000.0)) * np.sin(np.pi * t / dur)
+    x = x / (np.abs(x).max() or 1)
+    return np.stack([x, x], axis=1)
+
+
+def type_(dur=0.36, seed=12):
+    """a few typewriter keys"""
+    n = int(dur * SR)
+    x = np.zeros(n)
+    rng = np.random.default_rng(seed)
+    for k in range(4):
+        at = int((0.012 + k * 0.08 + rng.uniform(-0.01, 0.01)) * SR)
+        m = int(0.03 * SR)
+        tt = np.arange(m) / SR
+        hit = (_noise(m, seed + k) * 0.6 + np.sin(2 * np.pi * 1800 * tt)) * np.exp(-tt * 140)
+        x[at : at + m] += hit[: max(0, min(m, n - at))]
+    x = x / (np.abs(x).max() or 1)
+    return np.stack([x, x], axis=1)
+
+
+def marker(dur=0.42, seed=13):
+    """a marker scribbling: scratchy, uneven"""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    x = _noise(n, seed)
+    x = x - _onepole_lowpass(x, np.full(n, 2200.0))
+    x = x * (0.6 + 0.4 * np.sin(2 * np.pi * 11 * t)) * np.sin(np.pi * t / dur) ** 0.6
+    x = x / (np.abs(x).max() or 1)
+    return np.stack([x, x], axis=1)
+
+
+def music_bed(length, path, bpm=84, seed=3, mood="documentary"):
+    """A quiet documentary bed made on the spot (no licensing): a soft minor-key pad, a felt-piano
+    pulse on each beat, a low root, a little vinyl dust. Sits under a voice; ducking does the rest."""
+    import soundfile as sf
+
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    beat = 60 / bpm
+    bar = beat * 4
+    roots = [57, 53, 48, 55]  # A minor, F, C, G (MIDI)
+    chords = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]
+    hz = lambda m: 440 * 2 ** ((m - 69) / 12)  # noqa: E731
+    out = np.zeros(n)
+    for b in range(int(length / bar) + 1):
+        a, e = int(b * bar * SR), int(min(n, (b + 1) * bar * SR + 0.6 * SR))
+        if a >= n:
+            break
+        tt = np.arange(e - a) / SR
+        env = np.minimum(1, tt / 0.9) * np.exp(-np.maximum(0, tt - bar) * 3)
+        ch = chords[b % 4]
+        pad = sum(np.sin(2 * np.pi * hz(m) * tt + 0.3 * np.sin(2 * np.pi * 0.2 * tt)) for m in ch) / 3
+        out[a:e] += 0.16 * pad * env
+        out[a:e] += 0.18 * np.sin(2 * np.pi * hz(roots[b % 4] - 24) * tt) * env
+        for k in range(4):  # felt piano: one chord tone per beat, soft attack, short decay
+            s0 = a + int(k * beat * SR)
+            if s0 >= n:
+                break
+            m = int(1.4 * SR)
+            pt = np.arange(m) / SR
+            note = ch[(k + b) % 3] + 12
+            p = (np.sin(2 * np.pi * hz(note) * pt) + 0.3 * np.sin(4 * np.pi * hz(note) * pt)) * np.exp(-pt * 3.2)
+            p *= np.minimum(1, pt / 0.008)
+            end = min(n, s0 + m)
+            out[s0:end] += 0.12 * p[: end - s0]
+    out = _onepole_lowpass(out, np.full(n, 3200.0))
+    rng = np.random.default_rng(seed)
+    out += (rng.random(n) < 0.0006) * rng.uniform(-0.15, 0.15, n)  # dust
+    fade = np.minimum(1, np.minimum(t / 2.0, (length - t) / 2.5))
+    out = out * np.clip(fade, 0, 1)
+    out = out / (np.abs(out).max() or 1) * 0.6
+    sf.write(str(path), np.stack([out, out * 0.97], axis=1), SR, subtype="PCM_16")
+    return path
+
+
+SYNTHS = {
+    "paper": paper,
+    "stamp": stamp,
+    "tape": tape,
+    "type": type_,
+    "marker": marker,
+    "whoosh": whoosh,
+    "swish": swish,
+    "impact": impact,
+    "riser": riser,
+    "pop": pop,
+    "click": click,
+    "tick": tick,
+    "ding": ding,
+}
+GAIN = {
+    "paper": 0.5,
+    "stamp": 0.75,
+    "tape": 0.45,
+    "type": 0.4,
+    "marker": 0.35,
+    "whoosh": 0.55,
+    "swish": 0.4,
+    "riser": 0.45,
+    "impact": 0.9,
+    "pop": 0.6,
+    "click": 0.5,
+    "tick": 0.4,
+    "ding": 0.45,
+}  # fmt: skip
 
 
 def load_sound(path):

@@ -10,7 +10,7 @@ description: >
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.16.0"
+  version: "0.17.0"
 ---
 
 # Create
@@ -72,6 +72,7 @@ illustrated videos:
 
 | Look | Feels like | Good for |
 |---|---|---|
+| `collage` | a video essay desk: paper cutouts, tape, stamps, typewriter, red string, halftone art | explainers, profiles, history, true stories (the strongest look for faceless explainers) |
 | `editorial` | a magazine feature: paper, big serif, one red, thin rules | explainers, profiles, history, news stories |
 | `news` | a broadcast package: navy, heavy grotesk, red tags | breaking news, results, sports |
 | `hype` | condensed caps, black and acid yellow, slams | gaming intros, drops, sports hype |
@@ -83,6 +84,27 @@ Fonts are bundled (Instrument Serif, Inter Tight, Anton, Archivo Black, JetBrain
 Grotesk, Press Start 2P, Bangers, Cabin Sketch), so renders never fall back to Arial, and the
 renderer warns if a font fails to load. With a look, captions are drawn inside the scene in its
 own type (`"caption_mode": "burn"` for the old burned-in style).
+
+**Explainers: pace and build like a video essay.** What separates a real explainer from a slideshow:
+- **A new visual every 2-3 seconds**, matched to the narration. Write the script as short beats
+  (one clause each, 40-60 for three minutes), one scene per beat: each beat's voice line times it.
+- **Build a board, don't swap slides.** With the `collage` look, `K.collage` (`C`) puts physical
+  pieces on a paper board: `C.card`, `C.art(id, "capitol" | "skyline" | "spires" | "cap" |
+  "stethoscope" | "books" | "mic" | "glasses" | "pipe" | "factory" | "ballot" | "money" | "jersey" |
+  "health" | "podium" | "michigan", ...)` (halftone illustrations; add your own to
+  `window.ART_ICONS`), `C.strip` (typewriter slip), `C.stamp`, `C.tape`, `C.pin` + `C.string`,
+  `C.circle` / `C.underline` / `C.arrow` (marker, drawn on), `C.text` (marker notes). Each beat
+  of a board creates every piece of the board, shows earlier ones with `C.settled`, and brings in
+  its own with `C.in(id, t, start, "drop" | "left" | "right" | "slap")` (stepped at 12 fps like
+  stop-motion), back to front.
+- **Move the camera across the board**: `C.frame(prevIds, newIds, t)` travels from the last beat's
+  pieces to this beat's, so every beat fills the frame; pass `null` on a board's last beat to pull
+  back to the whole thing.
+- **Tactile sound**: with `"sfx": true` every piece makes its own sound (paper, tape, stamp,
+  typewriter, marker) on the frame it lands. `"music": "bed"` makes a quiet documentary bed on
+  the spot when there's no track.
+- Real photos make it better still: use the user's own, or images they have rights to. Never put a
+  photo of a real person into a video unless the user supplied it.
 
 **Art styles** (illustration, same subject drawn many ways, like the "10 animation styles" trend):
 - 2D with `ART` (art.js): `pixel` (low-res, scanlines), `chalk` (chalkboard, wobbly strokes),

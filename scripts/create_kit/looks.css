@@ -104,3 +104,20 @@ body[data-look="pop"] #k-cap .on { color: var(--accent-2); }
 @font-face { font-family: "Press Start 2P"; src: url("fonts/press-start-2p-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "Bangers"; src: url("fonts/bangers-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "Cabin Sketch"; font-weight: 700; src: url("fonts/cabin-sketch-latin-700-normal.woff2") format("woff2"); }
+
+@font-face { font-family: "Special Elite"; src: url("fonts/special-elite-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Permanent Marker"; src: url("fonts/permanent-marker-latin-400-normal.woff2") format("woff2"); }
+/* collage: the documentary / video-essay desk. Paper, typewriter, red string, halftone. */
+body[data-look="collage"] {
+  --bg: #e9dfcb; --panel: #f6f0e2; --line: #1c1a17; --text: #1c1a17; --muted: #6b6255;
+  --accent: #c0281f; --accent-2: #f2c94c; --marker: #f2c94c;
+  --font: "Inter Tight", sans-serif; --display: "Anton", sans-serif; --display-case: uppercase;
+  --display-lh: .9; --display-track: 0.005em; --mono: "Special Elite", monospace; --grain: .18;
+  --vignette: rgba(40, 25, 10, .22);
+}
+.type { font-family: "Special Elite", monospace; }
+.hand { font-family: "Permanent Marker", cursive; color: var(--accent); }
+.head { font-family: "Anton", sans-serif; text-transform: uppercase; line-height: .92; letter-spacing: .005em; }
+body[data-look="collage"] #k-cap { top: 70%; font: 800 64px/1.1 var(--font); color: #1c1a17; }
+body[data-look="collage"] #k-cap span { background: #fbf7ee; padding: .06em .16em; margin: 0 -.06em; box-shadow: 0 3px 0 rgba(30,20,10,.25); }
+body[data-look="collage"] #k-cap .on { background: var(--accent-2); }

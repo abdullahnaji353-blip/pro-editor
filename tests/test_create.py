@@ -107,3 +107,16 @@ def test_kit_ships_its_fonts_and_three():
     for f in re.findall(r'url\("fonts/([^"]+)"\)', css):
         assert (kit / "fonts" / f).exists(), f
     assert (kit / "vendor" / "three.cjs").exists() and (kit / "fonts" / "OFL.txt").exists()
+
+
+def test_collage_kit_files_and_icons_are_registered():
+    from pathlib import Path
+
+    kit = Path(__file__).resolve().parents[1] / "scripts" / "create_kit"
+    src = (kit / "icons.js").read_text()
+    for name in ("capitol", "skyline", "michigan", "ballot", "money"):
+        assert f"I.{name} =" in src
+    import create
+
+    page_src = Path(create.__file__).read_text()
+    assert '"icons.js", "collage.js"' in page_src
