@@ -544,7 +544,7 @@ def render_scene(page, base, s, W, H, fps, dst, preview, beat_info=None, look=No
             "20" if preview else "18",
             # grain and fine texture can balloon the file: cap it near what social apps re-encode to
             "-maxrate",
-            "6M" if preview else ("16M" if max(W, H) > 2000 else "10M"),
+            "6M" if preview else ("16M" if max(W, H) > 2000 else "8M"),
             "-bufsize",
             "20M",
             "-r",
@@ -654,7 +654,7 @@ def build_audio(base, pj, durs, total, out_wav):
             chains.append(f"{fx}[mix]")
     else:
         chains.append("[base]anull[mix]")
-    chains.append("[mix]loudnorm=I=-14:TP=-1.5:LRA=11[out]")
+    chains.append("[mix]loudnorm=I=-14:TP=-1.5:LRA=11,alimiter=limit=0.79:level=disabled[out]")
     subprocess.run(
         [
             "ffmpeg",
@@ -737,6 +737,12 @@ def cmd_render(a):
     work = base / ".render"
     work.mkdir(exist_ok=True)
     scenes = pj["scenes"]
+    unvoiced = [x["id"] for x in scenes if x.get("narration") and not x.get("audio")]
+    if unvoiced and (pj.get("voice") or {}).get("engine") not in (None, "none"):
+        print(
+            f"  warning: {len(unvoiced)} scene(s) have narration but no voice line ({', '.join(unvoiced[:5])}...)."
+            " Run `create.py voice` again: the project file was probably rewritten after it."
+        )
     files, durs = [], []
     with sync_playwright() as pw:
         browser = pw.chromium.launch()

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.1
+
+- `/create` render: a limiter keeps the true peak under -1 dBTP; 1080p is capped at 8 Mbps; a warning
+  when scenes have narration but the voice lines are missing.
+
 ## 0.17.0
 
 - `collage` look for `/create`: the video-essay desk. Torn paper cards with thickness and shadow,
