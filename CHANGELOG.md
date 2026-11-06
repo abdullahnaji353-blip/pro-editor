@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0
+
+- `/voiceover` and `tts.py`: text to speech for any video, not just `/create`. Make a voice file
+  from text or a script, or lay timed voice lines onto a video with its own sound ducked under
+  them, captions burned in and loudness at -14 LUFS. Engines: ElevenLabs (connector or API key),
+  Kokoro (free, local), macOS / Windows / Linux voices, or your own recording.
+
 ## 0.17.2
 
 - `K.clip` loops a `<video loop>` instead of freezing on its last frame.

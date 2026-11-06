@@ -150,6 +150,22 @@ then free CC0 / CC BY sounds from Openverse that it measures and ranks for the j
 for you), then built-in synthesized ones. About one a second at most, always under your voice.
 In `/create` it's one switch (`"sfx": true`) because every animation's frame is already known.
 
+### Voiceover and text to speech (`/voiceover`)
+
+Say "narrate this", "add a voiceover", or "say 'watch this' at 0:03". Claude writes the script
+(or uses yours), picks a voice and places each line at its moment:
+
+```
+python scripts/tts.py say "Hello there" --voice am_michael --out voice.wav
+python scripts/tts.py onto clip.mp4 --lines lines.json --captions --out narrated.mp4
+python scripts/tts.py voices
+```
+
+`lines.json` is a list of `{"at": seconds, "text": "..."}`. Your video's own sound dips under
+the voice and comes back between lines; the result ends at -14 LUFS. Voices, best first: an
+ElevenLabs voice if you've connected it (it uses your credits), Kokoro (free, natural, runs on
+your computer), then your system's built-in voices. Your own recording works too (`--audio`).
+
 ### It learns your style
 
 When a note is lasting ("always put captions up top", "never use the glitch effect", or the same

@@ -78,3 +78,5 @@ Edits learn the user's taste: lasting notes are saved as rules in `pro-editor-ru
 footage folder (one line each, their words and the date) and every command reads them first. If
 the file exists, say in one line how many rules you're applying. If they ask to see or change their
 rules, open that file with them.
+
+Narration or text to speech on a video they already have ("add a voiceover", "say this at 0:05"): `/voiceover`.
