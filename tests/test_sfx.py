@@ -53,7 +53,9 @@ def test_openverse_results_keep_credits():
 
 
 def test_tactile_sounds_and_music_bed(tmp_path):
-    import soundfile as sf
+    import pytest
+
+    sf = pytest.importorskip("soundfile")
 
     from sfx import music_bed
 
