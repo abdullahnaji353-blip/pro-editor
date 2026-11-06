@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.2
+
+- `K.clip` loops a `<video loop>` instead of freezing on its last frame.
+- Collage stamps size their text to fit, so long words no longer spill past the border.
+
 ## 0.17.1
 
 - `/create` render: a limiter keeps the true peak under -1 dBTP; 1080p is capped at 8 Mbps; a warning

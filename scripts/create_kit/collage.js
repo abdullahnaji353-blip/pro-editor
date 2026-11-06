@@ -118,12 +118,14 @@
   function stamp(id, text, o) {          // distressed rubber stamp
     const col = o.color || "#b3261e";
     const nid = `n${hash(id)}`;
+    // Anton is about half an em per letter: keep the word inside the 360-unit frame, whatever its length
+    const fs = Math.min(o.size || 72, 740 / Math.max(1, String(text).length), o.sub ? 78 : 104);
     const svg = `<svg width="${o.w || 420}" height="${(o.w || 420) * 0.36}" viewBox="0 0 420 150" style="overflow:visible">
       <defs><filter id="${nid}"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="${hash(id) % 50}"/>
       <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.35"/><feComposite in="SourceGraphic" operator="in"/></filter></defs>
       <g filter="url(#${nid})"><rect x="8" y="8" width="404" height="134" rx="10" fill="none" stroke="${col}" stroke-width="10"/>
       <rect x="22" y="22" width="376" height="106" rx="6" fill="none" stroke="${col}" stroke-width="3"/>
-      <text x="210" y="${o.sub ? 82 : 96}" text-anchor="middle" font-family="Anton,Impact,sans-serif" font-size="${o.size || 72}" letter-spacing="4" fill="${col}">${text}</text>
+      <text x="210" y="${o.sub ? 82 : 96}" text-anchor="middle" font-family="Anton,Impact,sans-serif" font-size="${fs}" letter-spacing="4" fill="${col}">${text}</text>
       ${o.sub ? `<text x="210" y="118" text-anchor="middle" font-family="Special Elite,monospace" font-size="24" fill="${col}">${o.sub}</text>` : ""}</g></svg>`;
     const el = place(id, svg, { ...o, kind: "stamp", lift: 0, blur: 0, z: o.z ?? 800 }, Z++);
     el.style.filter = "none"; el.style.mixBlendMode = "multiply";

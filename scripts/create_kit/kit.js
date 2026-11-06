@@ -66,7 +66,8 @@
       const v = el(x); if (!v) return;
       v.muted = true; v.pause();
       const dur = v.duration || 1e9;
-      const want = Math.max(0, Math.min(dur - 0.05, (t - start) * rate));
+      let want = Math.max(0, (t - start) * rate);
+      want = v.loop && v.duration ? want % (dur - 0.04) : Math.min(dur - 0.05, want);  // <video loop> wraps around
       if (Math.abs(v.currentTime - want) > 0.004 || v.readyState < 2) {
         (window.__pending = window.__pending || []).push(new Promise((ok) => {
           const done = () => { v.removeEventListener("seeked", done); ok(); };
