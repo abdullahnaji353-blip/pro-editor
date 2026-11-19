@@ -21,6 +21,8 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
   game sounds.
 - `/avatar`: an animated character that stands in your palm and follows your hand, reacts when
   you poke it, and can appear from a closed fist. Solid or hologram style, or your own character.
+- `/story`: short stories with blocky 3D characters in a little town, like the "In this town..."
+  trend: a rule, a disaster, a twist, each character with their own voice and a talking face.
 - `/voiceover`: text to speech for any video. Write or paste a script, pick a voice (ElevenLabs,
   free Kokoro on your computer, or your system's voices), and lay lines onto your video at the
   right moments with the game sound ducked underneath and captions on top.
@@ -42,7 +44,7 @@ ffmpeg and Python on your own computer, showing you a quick preview before the f
 
 ![The built-in avatar in its solid and hologram styles, waving, talking and reacting to a poke](docs/images/avatar.png)
 
-> Early version (0.18). Every tool is tested on generated test videos, but not much on real
+> Early version (0.19). Every tool is tested on generated test videos, but not much on real
 > footage yet, so expect rough edges, especially in highlight picking and face tracking.
 > Bug reports are very welcome.
 
@@ -114,6 +116,7 @@ up as `/pro-editor:start`, `/pro-editor:montage` and so on.
 | `/checkup` | "is my footage ok?" | Finds phone-footage problems (audio drift, washed-out HDR, clipping) and makes fixed copies |
 | `/talk` | "do what I said in the video" | Hears words and sounds, follows spoken instructions, turns "clip that" into highlights, takes voice notes as instructions |
 | `/avatar` | "put a robot in my hand" | Hand-tracked animated character: waves, blinks, reacts to pokes, speech bubbles, talks with a voice line |
+| `/story` | "make an In this town story" | Blocky 3D character stories: script, voices, lip-synced faces, camera shots, captions |
 | `/voiceover` | "narrate this", "say this at 0:05" | Text to speech: a voice file, or voice lines placed on your video with ducking and captions |
 | `/reference` | "find examples of this edit" | Web research for references, how each is made, what they share, then a plan |
 | `/shorts` | "make shorts from my stream" | Finds and ranks self-contained moments, then reframes and captions the ones you pick |

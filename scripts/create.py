@@ -331,8 +331,10 @@ def cmd_voice(a):
         audio = s.get("audio")
         if not audio and s.get("narration") and engine != "none":
             dst = base / "vo" / f"{s['id']}.wav"
+            # a scene can have its own voice: one character per scene for dialogue
+            sv = s.get("voice") or voice
             if a.force or not dst.exists():
-                if not speak(engine, s["narration"], voice, dst):
+                if not speak(engine, s["narration"], sv, dst):
                     die(f"The {engine} voice failed on scene {s['id']}. Try --engine none, or another --voice.")
                 made += 1
             s["audio"] = audio = str(dst.relative_to(base))
@@ -364,7 +366,7 @@ def cmd_voice(a):
 def song_beats(base, pj):
     """Beats of the project's music, cached next to the project."""
     music = pj.get("music")
-    if not music or music == "bed":
+    if not music or music in ("bed", "party"):
         return None
     cache = base / ".render" / "beats.json"
     src = (base / music).resolve()
@@ -424,6 +426,7 @@ def scene_page(browser, W, H, scale=1):
         f"(function(){{var module={{exports:{{}}}},exports=module.exports;\n{src}\nwindow.THREE=module.exports;}})();"
     )
     page.add_init_script(path=str(KIT / "three3d.js"))
+    page.add_init_script(path=str(KIT / "story3d.js"))
     return page
 
 
@@ -615,10 +618,17 @@ def build_audio(base, pj, durs, total, out_wav):
         t += d
     sfx_wav = sfx_track(base, pj, durs, total, out_wav.with_name("sfx.wav"))
     music = pj.get("music")
-    if music == "bed":  # a quiet documentary bed made on the spot (no licensing)
+    if music in ("bed", "party"):  # made on the spot, no licensing: a documentary bed or a house-party beat
         from sfx import music_bed
 
-        music = str(music_bed(total, out_wav.with_name("bed.wav"), bpm=float(pj.get("bed_bpm", 84))))
+        music = str(
+            music_bed(
+                total,
+                out_wav.with_name("bed.wav"),
+                bpm=float(pj.get("bed_bpm", 84 if music == "bed" else 124)),
+                mood="party" if music == "party" else "documentary",
+            )
+        )
     has_voice = bool(labels)
     if not has_voice and not music and not sfx_wav:
         return False

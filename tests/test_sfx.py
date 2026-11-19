@@ -66,3 +66,15 @@ def test_tactile_sounds_and_music_bed(tmp_path):
     x, sr = sf.read(out)
     assert abs(len(x) / sr - 6.0) < 0.01 and 0.3 < np.abs(x).max() <= 0.61
     assert np.abs(x[: int(0.05 * sr)]).max() < 0.05  # fades in
+
+
+def test_bounce_and_party_beat(tmp_path):
+    import pytest
+
+    sf = pytest.importorskip("soundfile")
+    from sfx import music_bed
+
+    b = SYNTHS["bounce"]()
+    assert peak_time(b) < 0.02
+    x, sr = sf.read(music_bed(4.0, tmp_path / "p.wav", bpm=124, mood="party"))
+    assert abs(len(x) / sr - 4.0) < 0.01 and np.abs(x).max() > 0.3

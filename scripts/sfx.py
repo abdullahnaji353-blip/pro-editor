@@ -178,6 +178,55 @@ def marker(dur=0.42, seed=13):
     return np.stack([x, x], axis=1)
 
 
+def _party(length, path, bpm=124, seed=4):
+    """A house party heard through the walls: four-on-the-floor kick, off-beat hats, a bass line,
+    low-passed hard so it sits behind dialogue like music from the house across the street."""
+    import soundfile as sf
+
+    n = int(length * SR)
+    beat = 60 / bpm
+    out = np.zeros(n)
+    hz = lambda m: 440 * 2 ** ((m - 69) / 12)  # noqa: E731
+    bass = [45, 45, 48, 43]
+    rng = np.random.default_rng(seed)
+    for b in range(int(length / beat) + 1):
+        s0 = int(b * beat * SR)
+        if s0 >= n:
+            break
+        m = int(0.3 * SR)
+        tt = np.arange(m) / SR
+        kick = np.sin(2 * np.pi * (50 * tt + 90 * (1 - np.exp(-tt * 30)) / 30)) * np.exp(-tt * 9)
+        e = min(n, s0 + m)
+        out[s0:e] += 0.9 * kick[: e - s0]
+        h0 = s0 + int(beat / 2 * SR)  # off-beat hat
+        mh = int(0.05 * SR)
+        if h0 + mh < n:
+            out[h0 : h0 + mh] += 0.12 * rng.uniform(-1, 1, mh) * np.exp(-np.arange(mh) / SR * 80)
+        note = bass[(b // 4) % 4]
+        mb = int(beat * 0.9 * SR)
+        tb = np.arange(mb) / SR
+        bl = np.sign(np.sin(2 * np.pi * hz(note) * tb)) * np.exp(-tb * 3) * 0.3
+        e = min(n, s0 + mb)
+        out[s0:e] += bl[: e - s0]
+    out = _onepole_lowpass(_onepole_lowpass(out, np.full(n, 420.0)), np.full(n, 420.0))
+    t = np.arange(n) / SR
+    out *= np.clip(np.minimum(t / 1.0, (length - t) / 1.5), 0, 1)
+    out = out / (np.abs(out).max() or 1) * 0.7
+    sf.write(str(path), np.stack([out, out], axis=1), SR, subtype="PCM_16")
+    return path
+
+
+def bounce(dur=0.18, seed=14):
+    """a basketball hitting the driveway: a hollow low thump with a slap"""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    body = np.sin(2 * np.pi * (140 * t + 60 * np.exp(-t * 40) / 40)) * np.exp(-t * 28)
+    slap = _onepole_lowpass(_noise(n, seed), np.full(n, 3000.0)) * np.exp(-t * 160) * 0.6
+    x = body + slap
+    x = x / (np.abs(x).max() or 1)
+    return np.stack([x, x], axis=1)
+
+
 def music_bed(length, path, bpm=84, seed=3, mood="documentary"):
     """A quiet documentary bed made on the spot (no licensing): a soft minor-key pad, a felt-piano
     pulse on each beat, a low root, a little vinyl dust. Sits under a voice; ducking does the rest."""
@@ -187,6 +236,8 @@ def music_bed(length, path, bpm=84, seed=3, mood="documentary"):
     t = np.arange(n) / SR
     beat = 60 / bpm
     bar = beat * 4
+    if mood == "party":
+        return _party(length, path, bpm, seed)
     roots = [57, 53, 48, 55]  # A minor, F, C, G (MIDI)
     chords = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]
     hz = lambda m: 440 * 2 ** ((m - 69) / 12)  # noqa: E731
@@ -223,6 +274,7 @@ def music_bed(length, path, bpm=84, seed=3, mood="documentary"):
 
 
 SYNTHS = {
+    "bounce": bounce,
     "paper": paper,
     "stamp": stamp,
     "tape": tape,
@@ -238,6 +290,7 @@ SYNTHS = {
     "ding": ding,
 }
 GAIN = {
+    "bounce": 0.7,
     "paper": 0.5,
     "stamp": 0.75,
     "tape": 0.45,

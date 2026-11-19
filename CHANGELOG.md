@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.19.0
+
+- `/story`: blocky 3D character stories like the "In this town..." trend. A little town (street,
+  a party house with lights on the beat, houses, a hoop, lamps, trees, night to sunrise), original
+  blocky characters with poses (walk, dribble, talk, shrug, dance, tired, shoot) and faces whose
+  mouths follow the voice, camera shots, a basketball, and a house-party beat.
+- `/create`: a different voice per scene (`"voice"` on a scene) for dialogue; `"music": "party"`;
+  a `bounce` sound; the `story` caption look.
+
 ## 0.18.0
 
 - `/voiceover` and `tts.py`: text to speech for any video, not just `/create`. Make a voice file

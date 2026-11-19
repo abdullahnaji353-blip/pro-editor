@@ -120,3 +120,15 @@ def test_collage_kit_files_and_icons_are_registered():
 
     page_src = Path(create.__file__).read_text()
     assert '"icons.js", "collage.js"' in page_src
+
+
+def test_story_kit_is_loaded_and_scenes_can_have_their_own_voice():
+    from pathlib import Path
+
+    import create
+
+    src = Path(create.__file__).read_text()
+    assert 'KIT / "story3d.js"' in src and 'sv = s.get("voice") or voice' in src
+    kit = (Path(create.__file__).parent / "create_kit" / "story3d.js").read_text()
+    for name in ("avatar", "world", "shot", "arc", "hoop"):
+        assert f"function {name}(" in kit
