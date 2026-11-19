@@ -2,7 +2,7 @@
 name: story
 description: This skill should be used when the user invokes /story, or asks for "a Roblox story video", "an In this town story", "a blocky avatar story", "the HUSS HUSS HUSS trend", "an animated story with characters", "a 3D short with talking characters", "a story part 2", or wants a short narrated or dialogue story told with blocky 3D characters in a little town. Writes the story (a rule, a disaster, a twist), casts characters with their own voices, stages each shot in 3D with lip-synced faces, adds captions, sound and music, and renders a vertical video.
 metadata:
-  version: "0.19.1"
+  version: "0.19.2"
 ---
 
 # Story (blocky 3D character stories)
@@ -62,6 +62,13 @@ W.draw(t);
 `K3.arc(ball, from, to, k)` throws a ball; `K3.house`, `K3.hoop`, `K3.lamp`, `K3.roundTree`,
 `K3.fence`, `K3.car`, `K3.bunting` (flags or `lights: true`), `K3.balloons`, `K3.ball` add props.
 The town is lit bright and clean like the trend videos, even at night (a big moon, string lights). Characters face +z; a camera's fill light keeps faces readable at night.
+
+Cut like the trend: 2-3 shots per line with `K3.cuts(W.S, t, d, [{at: 0, from, to, look, fov},
+{at: 1.4, ..., punch: 0.08, shake: 0.25}])` (hard cuts inside one voice line; `punch` snaps in on
+the cut, `shake` jolts it, both for hits like "HUSS!"). Blend poses instead of snapping:
+`W.kid.pose("talk", t, {from: "walk", at: 1.9})`; turn heads toward whoever's talking with
+`W.fr.look(x, z)`. Frame close-ups chest-up with the whole head in frame (camera ~3.4 units away,
+fov ~34), never a face filling the screen.
 
 Shot grammar: wide establishing shot first, then close-ups for lines (camera 2-4 units away,
 at eye height ~2), over-the-shoulder for dialogue, a low angle for swagger, a wide again for

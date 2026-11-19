@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.2
+
+- `/story` edits like the trend: `K3.cuts` for hard cuts with punch-ins and shake inside a line,
+  poses that blend instead of snapping, heads that turn toward whoever's talking.
+
 ## 0.19.1
 
 - `/story` characters rebuilt from real trend references: rounded heads, expressive face decals

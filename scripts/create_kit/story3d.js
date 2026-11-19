@@ -183,7 +183,23 @@
     let mouth = 0, mood = o.mood || "neutral", lastKey = "";
     g.say = (level) => { mouth = clamp(level || 0); };
     g.mood = (m) => { mood = m; };
-    g.pose = (name, t, p = {}) => pose(A, name, t, p);
+    // poses blend over 0.3 s when you pass {from: "previous pose", at: switchTime}, instead of snapping
+    const KEYS = ["armL", "armR", "legL", "legR", "neck", "hips"];
+    const snap = () => KEYS.map((k) => [A[k].rotation.x, A[k].rotation.y, A[k].rotation.z]).concat([[A.hips.position.y, 0, 0]]);
+    g.pose = (name, t, p = {}) => {
+      const k = p.from && p.at != null ? clamp((t - p.at) / (p.blend ?? 0.3)) : 1;
+      if (k >= 1) return pose(A, name, t, p);
+      pose(A, p.from, t, p); const a = snap();
+      pose(A, name, t, p); const b = snap(), e = ease(k);
+      KEYS.forEach((key, i) => A[key].rotation.set(lerp(a[i][0], b[i][0], e), lerp(a[i][1], b[i][1], e), lerp(a[i][2], b[i][2], e)));
+      A.hips.position.y = lerp(a[6][0], b[6][0], e);
+    };
+    // turn the head toward a point in the world (a little, like people do when they talk)
+    g.look = (x, z, amount = 0.6) => {
+      const ang = Math.atan2(x - g.position.x, z - g.position.z) - g.rotation.y;
+      const wrap = Math.atan2(Math.sin(ang), Math.cos(ang));
+      A.neck.rotation.y += clamp(wrap, -1.0, 1.0) * amount;
+    };
     g.face = (t) => {
       const blink = (t + (o.seed ?? 0)) % 3.4 < 0.12;
       const key = `${Math.round(mouth * 12)}|${blink}|${mood}`;
@@ -462,6 +478,22 @@
     S.camera.lookAt(lerp(la[0], lb[0], k) + sh, lerp(la[1], lb[1], k) + sh * 0.5, lerp(la[2], lb[2], k));
   }
 
+  // an edit inside one scene: hard cuts between shots. Each shot: {at, from, to, look, lookTo, fov,
+  // punch: zoom-in amount at its start, shake: seconds of shake at its start}
+  function cuts(S, t, d, list) {
+    let i = 0;
+    while (i + 1 < list.length && t >= list[i + 1].at) i++;
+    const c = list[i], end = i + 1 < list.length ? list[i + 1].at : d, lt = t - c.at, ld = end - c.at;
+    const punch = c.punch ? c.punch * Math.exp(-lt * 9) : 0;
+    const shake = c.shake && lt < c.shake ? (1 - lt / c.shake) * 0.06 : 0;
+    shot(S, lt, ld, { ...c, start: 0, dur: ld, shake });
+    if (punch) {
+      const cam = S.camera.position, la = c.lookTo ?? c.look;
+      cam.set(lerp(cam.x, la[0], punch), lerp(cam.y, la[1], punch), lerp(cam.z, la[2], punch));
+    }
+    return { index: i, local: lt, cut: lt < 1 / 30 };
+  }
+
   // a basketball shot: ball flies from hands to the rim and drops through
   function arc(ballMesh, from, to, k) {
     k = clamp(k);
@@ -470,5 +502,5 @@
     ballMesh.rotation.x = k * 12;
   }
 
-  Object.assign(K3, { rbox, roundTree, fence, car, bunting, balloons, avatar, ball, house, lamp, tree, hoop, world, shot, arc });
+  Object.assign(K3, { cuts, rbox, roundTree, fence, car, bunting, balloons, avatar, ball, house, lamp, tree, hoop, world, shot, arc });
 })();
