@@ -2,7 +2,7 @@
 name: story
 description: This skill should be used when the user invokes /story, or asks for "a Roblox story video", "an In this town story", "a blocky avatar story", "the HUSS HUSS HUSS trend", "an animated story with characters", "a 3D short with talking characters", "a story part 2", or wants a short narrated or dialogue story told with blocky 3D characters in a little town. Writes the story (a rule, a disaster, a twist), casts characters with their own voices, stages each shot in 3D with lip-synced faces, adds captions, sound and music, and renders a vertical video.
 metadata:
-  version: "0.19.0"
+  version: "0.19.1"
 ---
 
 # Story (blocky 3D character stories)
@@ -36,9 +36,13 @@ One character speaks per shot (`"voice"` on each scene picks theirs). Kokoro voi
 `am_liam` (young male), `am_adam`, `am_michael`, `af_heart`, `af_bella`, `bf_emma`... For
 ElevenLabs voices, generate each line with the connector and set `"audio"` per scene.
 
-Characters: `K3.avatar(S, {shirt, stripe, pants, skin, hair: "short" | "long" | "cap" | "none",
-hairColor, capColor, shoes, seed})`. Pick skin tones and outfits that make a varied cast and
-let each main character read at a glance (one bold shirt colour each).
+Characters: `K3.avatar(S, {shirt, pants, skin, hair: "short" | "long" | "none", hairColor,
+hat: "beanie" | "party" | "cap", hatColor, capColor, glasses, hoodie, text, subtext, textColor,
+stars, pattern: "check", shoes, seed})`. Rounded heads, soft plastic edges and printed hoodies
+read as the blocky-avatar style; faces have moods (`neutral`, `grin`, `wink`, `shocked`, `smug`,
+`tired`) and open into a talking grin with the voice. Give each main character one bold colour
+and one signature item (a beanie, glasses) so they read at a glance; vary skin tones. Invent
+your own shirt prints: don't copy another creator's character or merch text.
 
 ## 3. Stage it
 
@@ -55,8 +59,9 @@ K3.shot(W.S, t, d, { from: [x, y, z], to: [x, y, z], look: [x, y, z], fov: 38 })
 W.draw(t);
 ```
 
-`K3.arc(ball, from, to, k)` throws a ball; `K3.house`, `K3.hoop`, `K3.lamp`, `K3.tree`,
-`K3.ball` add props. Characters face +z; a camera's fill light keeps faces readable at night.
+`K3.arc(ball, from, to, k)` throws a ball; `K3.house`, `K3.hoop`, `K3.lamp`, `K3.roundTree`,
+`K3.fence`, `K3.car`, `K3.bunting` (flags or `lights: true`), `K3.balloons`, `K3.ball` add props.
+The town is lit bright and clean like the trend videos, even at night (a big moon, string lights). Characters face +z; a camera's fill light keeps faces readable at night.
 
 Shot grammar: wide establishing shot first, then close-ups for lines (camera 2-4 units away,
 at eye height ~2), over-the-shoulder for dialogue, a low angle for swagger, a wide again for
@@ -64,7 +69,7 @@ the twist. Keep the camera outside characters and walls: check the sheet, it sho
 
 ## 4. Sound, captions, render
 
-Project: `"look": "story"` (big white outlined captions), `"captions": true`, `"sfx": true`
+Project: `"look": "story"` (one word at a time, big white with a dark edge, like the trend), `"captions": true`, `"sfx": true`
 (add `K.sfx("bounce", time, id)` and friends for actions), `"music": "party"` (a house-party beat
 heard through the walls) or `"bed"`, or their own song.
 

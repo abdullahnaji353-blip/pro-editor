@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.19.1
+
+- `/story` characters rebuilt from real trend references: rounded heads, expressive face decals
+  (smile, talking grin with teeth, wink, shocked, smug, tired), soft-edged plastic bodies,
+  printed hoodies with drawstrings, beanies, party hats, caps, glasses, chunky hair.
+- A brighter, busier town: a big moon, rounded trees, fences, parked cars, bunting, string lights
+  and balloons at the party house, coloured houses with chimneys.
+- Story captions show one word at a time.
+
 ## 0.19.0
 
 - `/story`: blocky 3D character stories like the "In this town..." trend. A little town (street,

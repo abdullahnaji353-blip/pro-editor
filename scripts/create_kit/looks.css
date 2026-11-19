@@ -125,6 +125,7 @@ body[data-look="collage"] #k-cap .on { background: var(--accent-2); }
 /* story: TikTok story captions over 3D. Big white words, thick black outline, centred. */
 body[data-look="story"] { --bg: #0b1026; --text: #fff; --accent: #ffd23f; --font: "Inter Tight", sans-serif;
   --display: "Archivo Black", sans-serif; --grain: 0; }
-body[data-look="story"] #k-cap { top: 62%; font: 400 88px/1.05 "Archivo Black", sans-serif; color: #fff;
-  -webkit-text-stroke: 14px #000; paint-order: stroke fill; text-transform: uppercase; letter-spacing: .01em; }
-body[data-look="story"] #k-cap .on { color: var(--accent); }
+body[data-look="story"] #k-cap { top: 56%; font: 900 84px/1.05 "Inter Tight", sans-serif; color: #fff;
+  -webkit-text-stroke: 12px rgba(0,0,0,.85); paint-order: stroke fill; letter-spacing: -.01em;
+  text-shadow: 0 6px 18px rgba(0,0,0,.45); }
+body[data-look="story"] #k-cap .on { color: #fff; }

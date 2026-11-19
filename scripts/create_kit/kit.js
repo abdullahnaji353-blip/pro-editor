@@ -188,7 +188,8 @@
       ws.forEach((w, i) => {
         cur.push(w);
         const nx = ws[i + 1];
-        if (cur.length >= 3 || /[.,!?;:]$/.test(w.w) || !nx || nx.start - w.end > 0.35) { gs.push(cur); cur = []; }
+        const most = document.body.dataset.look === "story" ? 1 : 3;   // story videos show one word at a time
+        if (cur.length >= most || /[.,!?;:]$/.test(w.w) || !nx || nx.start - w.end > 0.35) { gs.push(cur); cur = []; }
       });
       window.__capGroups = gs;
     }
