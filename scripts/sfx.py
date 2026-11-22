@@ -353,8 +353,14 @@ def build_sfx_track(events, length, path, volume=0.5, sounds=None):
     cache = {}
     for kind, t in events:
         if kind not in cache:
-            cache[kind] = sound_for(kind, sounds)
+            try:
+                cache[kind] = sound_for(kind, sounds)
+            except KeyError:  # a named sound (footsteps, door...) with no file in the sounds folder
+                print(f"  no sound for '{kind}': add {kind}.mp3 to your sounds folder (ai_audio.py pack makes one)")
+                cache[kind] = None
         s = cache[kind]
+        if s is None:
+            continue
         start = int(t * SR) - (len(s) if kind == "riser" else int(peak_time(s) * SR))
         gain = GAIN.get(kind, 0.6)
         a, b = max(0, start), min(len(out), start + len(s))

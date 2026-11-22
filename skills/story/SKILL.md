@@ -2,7 +2,7 @@
 name: story
 description: This skill should be used when the user invokes /story, or asks for "a Roblox story video", "an In this town story", "a blocky avatar story", "the HUSS HUSS HUSS trend", "an animated story with characters", "a 3D short with talking characters", "a story part 2", or wants a short narrated or dialogue story told with blocky 3D characters in a little town. Writes the story (a rule, a disaster, a twist), casts characters with their own voices, stages each shot in 3D with lip-synced faces, adds captions, sound and music, and renders a vertical video.
 metadata:
-  version: "0.19.2"
+  version: "0.20.0"
 ---
 
 # Story (blocky 3D character stories)
@@ -75,6 +75,26 @@ at eye height ~2), over-the-shoulder for dialogue, a low angle for swagger, a wi
 the twist. Keep the camera outside characters and walls: check the sheet, it shows it at once.
 
 ## 4. Sound, captions, render
+
+Sound makes or breaks these. Synthesized effects and the generated beat are placeholders; for a
+video they'll post, use real audio:
+- **Sound effects**: `python3 $S/ai_audio.py pack <work>/sounds --for story` makes a realistic
+  set with ElevenLabs (bounce, swish, whoosh, pop, footsteps, door, crowd, ding; needs
+  `ELEVENLABS_API_KEY`, uses their credits), then `"sfx_sounds": "sounds"` in the project. Without
+  a key: make them with the ElevenLabs connector and save them under those names. Any file named
+  after a sound kind replaces the built-in one, peak still on the frame.
+- **Music**: their own track (`"music": "song.mp3"`), or `ai_audio.py music "prompt"` for an
+  ElevenLabs track. For TikTok, the trend's sound is usually added in the app: set
+  `"no_music_copy": true` and hand them the `_no_music` version too.
+- **Voices**: young character voices from ElevenLabs beat Kokoro by a mile for this format;
+  generate each line with the connector or the API and set `"audio"` per scene.
+
+What the trend videos look like (from real references): rounded blocky heads with big
+expressive face decals, printed hoodies, beanies and party hats; bright clean lighting even at
+night (string lights, a big moon); busy cozy sets (fences, bunting, a court with a scoreboard,
+furnished rooms); one word of caption at a time; a calm first-person narrator; a cut every 1-2 s.
+
+### Render
 
 Project: `"look": "story"` (one word at a time, big white with a dark edge, like the trend), `"captions": true`, `"sfx": true`
 (add `K.sfx("bounce", time, id)` and friends for actions), `"music": "party"` (a house-party beat

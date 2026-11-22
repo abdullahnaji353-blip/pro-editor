@@ -17,7 +17,8 @@ Commands
 
 PROJECT.json
   {"title": "...", "size": "1080x1920", "fps": 30,
-   "look": "collage | editorial | news | hype | minimal | tech | pop",
+   "look": "collage | editorial | news | hype | minimal | tech | pop | story",
+   "sfx_sounds": "sounds (your own or ai_audio.py pack files: bounce.mp3, swish.mp3 ...)", "no_music_copy": false,
    "music": "song.mp3", "music_volume": 0.18, "captions": true, "sfx": true, "sfx_volume": 0.22,
    "voice": {"engine": "auto", "voice": null}, "voiceover": null,
    "scenes": [{"id": "01-hook", "html": "scenes/01-hook.html", "narration": "...", "min_duration": 2.5}]}
@@ -823,6 +824,15 @@ def cmd_render(a):
     sound = [k for k, on in (("voice", any(x.get("audio") for x in scenes)), ("music", bool(pj.get("music")))) if on]
     size = f"{info['width']}x{info['height']}"
     print(f"Done -> {out}  ({size}, {info['duration']:.1f}s, {' + '.join(sound) or 'silent'})")
+    if (pj.get("no_music_copy") or getattr(a, "no_music_copy", False)) and pj.get("music"):
+        # the same video with voices and sound effects but no music, for adding a trending sound in the app
+        quiet = work / "mix_no_music.wav"
+        if build_audio(base, {**pj, "music": None}, durs, total, quiet):
+            nm = out.with_name(out.stem + "_no_music" + out.suffix)
+            cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(out), "-i", str(quiet), "-map", "0:v", "-map", "1:a"]
+            cmd += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", str(nm)]
+            subprocess.run(cmd, check=True)
+            print(f"No-music copy -> {nm}  (add the trending sound in TikTok / Reels / Shorts)")
 
 
 def main():
@@ -840,6 +850,9 @@ def main():
     r.add_argument("project")
     r.add_argument("--out")
     r.add_argument("--preview", action="store_true", help="half resolution, fast")
+    r.add_argument(
+        "--no-music-copy", action="store_true", help="also write a copy without music (voices + sound effects)"
+    )
     r.add_argument("--only", help="redraw just this scene id, reuse the others")
     a = ap.parse_args()
     {"voice": cmd_voice, "sheet": cmd_sheet, "render": cmd_render}[a.cmd](a)

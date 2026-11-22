@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0
+
+- `ai_audio.py`: realistic sound effects and music from ElevenLabs. `pack` makes a named set for
+  `/story`, `/montage` or `/create` (bounce, swish, whoosh, footsteps, door, crowd, paper, stamp...)
+  that replaces the synthesized sounds automatically; `sfx` makes one; `music` makes a track.
+- `/create` and `/story`: `"no_music_copy": true` (or `render --no-music-copy`) also writes the video
+  with voices and sound effects but no music, for adding a trending sound in the app.
+- Named sounds without a file (footsteps, door...) are skipped with a hint instead of failing.
+
 ## 0.19.2
 
 - `/story` edits like the trend: `K3.cuts` for hard cuts with punch-ins and shake inside a line,

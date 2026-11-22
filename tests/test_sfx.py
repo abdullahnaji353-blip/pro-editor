@@ -78,3 +78,22 @@ def test_bounce_and_party_beat(tmp_path):
     assert peak_time(b) < 0.02
     x, sr = sf.read(music_bed(4.0, tmp_path / "p.wav", bpm=124, mood="party"))
     assert abs(len(x) / sr - 4.0) < 0.01 and np.abs(x).max() > 0.3
+
+
+def test_ai_audio_packs_use_the_renderers_sound_names():
+    from ai_audio import PACKS, pack_items
+
+    for kind in ("bounce", "swish", "whoosh", "pop"):
+        assert kind in PACKS["story"]
+    assert set(PACKS["create"]) <= set(pack_items("all"))
+
+
+def test_named_sound_without_a_file_is_skipped(tmp_path):
+    import pytest
+
+    sf = pytest.importorskip("soundfile")
+    from sfx import build_sfx_track
+
+    out = build_sfx_track([("footsteps", 0.5), ("pop", 1.0)], 2.0, tmp_path / "fx.wav")
+    x, sr = sf.read(out)
+    assert np.abs(x[: int(0.9 * sr)]).max() < 1e-6 and np.abs(x).max() > 0.01

@@ -10,7 +10,7 @@ description: >
   music's beats when there's a song), adds voice, music and captions if wanted, checks the frames,
   and renders it.
 metadata:
-  version: "0.17.0"
+  version: "0.20.0"
 ---
 
 # Create
@@ -174,6 +174,10 @@ python3 $S/create.py render <work>/project.json        # full quality
   the voice. `"sfx_sounds": "sounds"` uses their own files (`pop*.wav`, `whoosh*.mp3`...);
   `"sfx_volume"` (default 0.22) sets the level. Call `K.sfx("ding", t, "id")` for one by hand.
 - Music: `"music": "song.mp3"` ducks under the voice automatically; loudness ends at -14 LUFS.
+  `"no_music_copy": true` also writes a `_no_music` version for adding a trending sound in the app.
+- Real sounds beat synthesized ones: `python3 $S/ai_audio.py pack <work>/sounds --for create`
+  (ElevenLabs, needs `ELEVENLABS_API_KEY`) or their own files, named by kind, with
+  `"sfx_sounds": "sounds"`. `ai_audio.py music "prompt"` makes a track.
   `"captions": true` burns word-by-word captions from the narration.
 
 ## 7. Finish
